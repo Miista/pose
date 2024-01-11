@@ -225,8 +225,8 @@ namespace Pose.Tests
         [TestMethod]
         public void Can_shim_instance_method_of_value_type()
         {
-            Func<InstanceValue, string> action = new Func<InstanceValue, string>((InstanceValue @this) => "String");
-            Shim shim = Shim.Replace(() => Is.A<InstanceValue>().GetString()).With(action);
+            Shim shim = Shim.Replace(() => Is.A<InstanceValue>().GetString()).With(
+                delegate(ref InstanceValue @this) { return "String"; });
 
             string dt = default;
             PoseContext.Isolate(
