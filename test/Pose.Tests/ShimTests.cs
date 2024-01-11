@@ -263,5 +263,17 @@ namespace Pose.Tests
             
             Assert.AreEqual("String", dt);
         }
+        
+        [TestMethod]
+        public void Can_shim_constructor()
+        {
+            Func<Instance> action = new Func<Instance>(() => new Instance(){Text = nameof(Instance.Text)});
+            Shim shim = Shim.Replace(() => new Instance()).With(action);
+
+            Instance dt = default;
+            PoseContext.Isolate(() => { dt = new Instance(); }, shim);
+            
+            Assert.AreEqual(nameof(Instance.Text), dt.Text);
+        }
     }
 }
