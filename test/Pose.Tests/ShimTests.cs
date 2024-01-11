@@ -115,5 +115,19 @@ namespace Pose.Tests
             Assert.IsTrue(getterExecuted, "Getter not executed");
             Assert.IsTrue(setterExecuted, "Setter not executed");
         }
+        
+        [TestMethod]
+        public void Sandbox()
+        {
+            Func<DateTime> action = new Func<DateTime>(() => new DateTime(2004, 1, 1));
+            Shim shim = Shim.Replace(() => DateTime.Now).With(action);
+
+            DateTime dt = default;
+            PoseContext.Isolate(() => { dt = DateTime.Now; }, shim);
+            
+            Assert.AreEqual(2004, dt.Year);
+            Assert.AreEqual(1, dt.Day);
+            Assert.AreEqual(1, dt.Month);
+        }
     }
 }
