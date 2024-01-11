@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
-
+using System.Threading.Tasks;
 using Pose.Exceptions;
 using Pose.Helpers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -36,6 +36,17 @@ namespace Pose.Tests
         }
 
         [TestMethod]
+        public void TestReplaceAsyncWithInstanceVariable()
+        {
+            ShimTests shimTests = new ShimTests();
+            Shim shim = Shim.Replace(() => shimTests.TestReplaceAsyncWithInstanceVariable());
+
+            Assert.AreEqual(typeof(ShimTests).GetMethod("TestReplaceAsyncWithInstanceVariable"), shim.Original);
+            Assert.AreSame(shimTests, shim.Instance);
+            Assert.IsNull(shim.Replacement);
+        }
+
+        [TestMethod]
         public void TestShimReplaceWithInvalidSignature()
         {
             ShimTests shimTests = new ShimTests();
@@ -60,6 +71,26 @@ namespace Pose.Tests
             Assert.AreEqual(action, shim.Replacement);
 
             Assert.AreEqual(typeof(ShimTests).GetMethod("TestReplace"), shim1.Original);
+            Assert.AreSame(shimTests, shim1.Instance);
+            Assert.AreEqual(actionInstance, shim1.Replacement);
+        }
+
+        public async Task<int> GetAsync() => await Task.FromResult(1);
+        
+        [TestMethod]
+        public void TestShimReplaceWithAsync()
+        {
+            ShimTests shimTests = new ShimTests();
+            Action action = new Action(() => { });
+            Func<ShimTests, Task<int>> actionInstance = new Func<ShimTests, Task<int>>((s) => { return Task.FromResult(1); });
+
+            Shim shim = Shim.Replace(() => Console.WriteLine()).With(action);
+            Shim shim1 = Shim.Replace(() => shimTests.GetAsync()).With(actionInstance);
+
+            Assert.AreEqual(typeof(Console).GetMethod("WriteLine", Type.EmptyTypes), shim.Original);
+            Assert.AreEqual(action, shim.Replacement);
+
+            Assert.AreEqual(typeof(ShimTests).GetMethod("GetAsync"), shim1.Original);
             Assert.AreSame(shimTests, shim1.Instance);
             Assert.AreEqual(actionInstance, shim1.Replacement);
         }
