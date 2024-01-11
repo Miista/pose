@@ -25,8 +25,8 @@ namespace Pose.Sandbox
                     // Console.Write(T.I);
                     // Console.WriteLine(T.Get());
                     // Console.WriteLine(inst.S);
-                    Console.WriteLine(inst.Get());
-                }, dateTimeShim1, dateTimeShim2, dateTimeShim3, dateTimeShim4, dateTimeShim5, dateTimeShim6);
+                    Console.WriteLine(T.I);
+                }, dateTimeShim);
         }
     }
 
@@ -36,7 +36,7 @@ namespace Pose.Sandbox
 
         public string Get()
         {
-            return string.Empty;
+            return "h";
         }
     }
     
