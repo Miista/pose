@@ -93,6 +93,31 @@ namespace Pose.IL
             ilGenerator.Emit(OpCodes.Ldtoken, method.DeclaringType);
             ilGenerator.Emit(OpCodes.Call, s_getMethodFromHandleMethod);
 
+            ilGenerator.Emit(OpCodes.Castclass, typeof(MethodInfo));
+            ilGenerator.Emit(OpCodes.Stloc_0);
+
+            ilGenerator.Emit(OpCodes.Ldloc_0);
+            ilGenerator.Emit(method.IsStatic || (method as MemberInfo).IsForValueType() ? OpCodes.Ldnull : OpCodes.Ldarg_0);
+            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod("GetIndexOfMatchingShim"));
+            ilGenerator.Emit(OpCodes.Stloc_1);
+            ilGenerator.Emit(OpCodes.Ldloc_1);
+            ilGenerator.Emit(OpCodes.Ldc_I4_M1);
+            ilGenerator.Emit(OpCodes.Ceq);
+            ilGenerator.Emit(OpCodes.Brtrue_S, rewriteLabel);
+            ilGenerator.Emit(OpCodes.Ldloc_1);
+            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod("GetShimReplacementMethod"));
+            ilGenerator.Emit(OpCodes.Stloc_0);
+            ilGenerator.Emit(OpCodes.Ldloc_0);
+            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod("GetMethodPointer"));
+            ilGenerator.Emit(OpCodes.Stloc_2);
+            ilGenerator.Emit(OpCodes.Ldloc_1);
+            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod("GetShimDelegateTarget"));
+            for (int i = 0; i < signatureParamTypes.Count; i++)
+                ilGenerator.Emit(OpCodes.Ldarg, i);
+            ilGenerator.Emit(OpCodes.Ldloc_2);
+            ilGenerator.EmitCalli(OpCodes.Calli, CallingConventions.HasThis, (method as MethodInfo).ReturnType, signatureParamTypes.ToArray(), null);
+            ilGenerator.Emit(OpCodes.Br_S, returnLabel);
+            
             // Rewrite method
             ilGenerator.MarkLabel(rewriteLabel);
             ilGenerator.Emit(OpCodes.Ldc_I4_0);
