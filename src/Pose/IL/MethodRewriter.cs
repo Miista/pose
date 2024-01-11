@@ -99,13 +99,13 @@ namespace Pose.IL
             }
 
 #if DEBUG
-            Debug.WriteLine("\n" + m_method);
+            Console.WriteLine("\n" + m_method);
 #endif
 
             foreach (var instruction in instructions)
             {
 #if DEBUG
-                Debug.WriteLine(instruction);
+                Console.WriteLine(instruction);
 #endif
 
                 EmitILForExceptionHandlers(ilGenerator, instruction, handlers);
@@ -163,11 +163,11 @@ namespace Pose.IL
 #if DEBUG
             var ilBytes = ilGenerator.GetILBytes();
             var browsableDynamicMethod = new BrowsableDynamicMethod(dynamicMethod, new DynamicMethodBody(ilBytes, locals));
-            Debug.WriteLine("\n" + dynamicMethod);
+            Console.WriteLine("\n" + dynamicMethod);
 
             foreach (var instruction in browsableDynamicMethod.GetInstructions())
             {
-                Debug.WriteLine(instruction);
+                Console.WriteLine(instruction);
             }
 #endif
             return dynamicMethod;
