@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
-
+using System.Threading.Tasks;
 using Pose.Helpers;
 using Pose.IL;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -23,6 +23,19 @@ namespace Pose.Tests
             Assert.AreEqual(DateTime.Now.ToString("yyyyMMdd_HHmm"), ((DateTime)func.DynamicInvoke()).ToString("yyyyMMdd_HHmm"));
         }
 
+        public static async Task<int> GetStaticAsync() => await Task.FromResult(1);
+        
+        [TestMethod]
+        public void TestStaticAsyncMethodRewrite()
+        {
+            MethodInfo methodInfo = typeof(MethodRewriterTests).GetMethod(nameof(GetStaticAsync));
+            MethodRewriter methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+            DynamicMethod dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+
+            Delegate func = dynamicMethod.CreateDelegate(typeof(Func<Task<int>>));
+            Assert.AreEqual(GetStaticAsync(), (Task<int>)func.DynamicInvoke());
+        }
+
         [TestMethod]
         public void TestInstanceMethodRewrite()
         {
@@ -37,6 +50,29 @@ namespace Pose.Tests
 
             Assert.AreEqual(1, list.Count);
             Assert.AreEqual(item, list[0]);
+        }
+
+        public bool InstanceAsyncCalled { get; set; } = false;
+        
+        public async Task<int> GetInstanceAsync(int n)
+        {
+            InstanceAsyncCalled = true;
+            return await Task.FromResult(1);
+        }
+
+        [TestMethod]
+        public void TestAsyncInstanceMethodRewrite()
+        {
+            int value = 2;
+            MethodRewriterTests instance = new MethodRewriterTests();
+            MethodInfo methodInfo = typeof(MethodRewriterTests).GetMethod(nameof(GetInstanceAsync));
+            MethodRewriter methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+            DynamicMethod dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+
+            Delegate func = dynamicMethod.CreateDelegate(typeof(Func<MethodRewriterTests, int, Task<int>>));
+            func.DynamicInvoke(instance, value);
+
+            Assert.AreEqual(true, instance.InstanceAsyncCalled);
         }
 
         [TestMethod]
