@@ -75,7 +75,7 @@ namespace Pose.Tests
             Assert.AreEqual(actionInstance, shim1.Replacement);
         }
 
-        public async Task<int> GetAsync() => await Task.FromResult(1);
+        public async Task<int> GetInstanceAsync() => await Task.FromResult(1);
         
         [TestMethod]
         public void TestShimReplaceWithAsync()
@@ -85,14 +85,27 @@ namespace Pose.Tests
             Func<ShimTests, Task<int>> actionInstance = new Func<ShimTests, Task<int>>((s) => { return Task.FromResult(1); });
 
             Shim shim = Shim.Replace(() => Console.WriteLine()).With(action);
-            Shim shim1 = Shim.Replace(() => shimTests.GetAsync()).With(actionInstance);
+            Shim shim1 = Shim.Replace(() => shimTests.GetInstanceAsync()).With(actionInstance);
 
             Assert.AreEqual(typeof(Console).GetMethod("WriteLine", Type.EmptyTypes), shim.Original);
             Assert.AreEqual(action, shim.Replacement);
 
-            Assert.AreEqual(typeof(ShimTests).GetMethod("GetAsync"), shim1.Original);
+            Assert.AreEqual(typeof(ShimTests).GetMethod(nameof(GetInstanceAsync)), shim1.Original);
             Assert.AreSame(shimTests, shim1.Instance);
             Assert.AreEqual(actionInstance, shim1.Replacement);
+        }
+        
+        public static async Task<int> GetStaticAsync() => await Task.FromResult(1);
+        
+        [TestMethod]
+        public void TestShimReplaceWithStaticAsync()
+        {
+            Func<Task<int>> action = new Func<Task<int>>(() => { return Task.FromResult(1); });
+
+            Shim shim = Shim.Replace(() => ShimTests.GetStaticAsync()).With(action);
+
+            Assert.AreEqual(typeof(ShimTests).GetMethod(nameof(GetStaticAsync), Type.EmptyTypes), shim.Original);
+            Assert.AreEqual(action, shim.Replacement);
         }
 
         [TestMethod]
