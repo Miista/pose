@@ -1,7 +1,7 @@
 using System;
 using System.Linq.Expressions;
 using System.Reflection;
-
+using System.Threading.Tasks;
 using Pose.Helpers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -35,6 +35,21 @@ namespace Pose.Tests
                 ShimHelper.GetMethodFromExpression(expr.Body, false, out Object instance));
 
             Assert.AreEqual<MethodBase>(typeof(Console).GetMethod("ReadLine"),
+                ShimHelper.GetMethodFromExpression(expr1.Body, false, out instance));
+        }
+
+        public static async Task<int> GetAsync() => await Task.FromResult(1);
+        
+        [TestMethod]
+        public void TestGetAsyncMethodFromExpressionValid()
+        {
+            Expression<Func<DateTime>> expr = () => DateTime.Now;
+            Expression<Func<Task<int>>> expr1 = () => GetAsync();
+
+            Assert.AreEqual<MethodBase>(typeof(DateTime).GetMethod("get_Now"),
+                ShimHelper.GetMethodFromExpression(expr.Body, false, out Object instance));
+
+            Assert.AreEqual<MethodBase>(typeof(ShimHelperTests).GetMethod(nameof(GetAsync)),
                 ShimHelper.GetMethodFromExpression(expr1.Body, false, out instance));
         }
 
