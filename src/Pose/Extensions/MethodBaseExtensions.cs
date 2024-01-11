@@ -9,6 +9,8 @@ namespace Pose.Extensions
         {
             return methodBase.DeclaringType.Assembly == typeof(Exception).Assembly;
         }
+        
+        public static bool IsForValueType(this MethodBase methodBase) => methodBase.DeclaringType.IsSubclassOf(typeof(ValueType));
 
         public static bool IsOverride(this MethodBase methodBase)
         {

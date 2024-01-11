@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using Pose.Extensions;
 using Pose.Helpers;
 
 namespace Pose.IL
@@ -59,6 +60,8 @@ namespace Pose.IL
                 StubHelper.GetOwningModule(),
                 true);
 
+            Console.WriteLine("\n" + method);
+            
             ILGenerator ilGenerator = stub.GetILGenerator();
 
             if (method.GetMethodBody() == null || StubHelper.IsIntrinsic(method))
@@ -97,8 +100,8 @@ namespace Pose.IL
             ilGenerator.Emit(OpCodes.Stloc_0);
 
             ilGenerator.Emit(OpCodes.Ldloc_0);
-            ilGenerator.Emit(method.IsStatic || (method as MemberInfo).IsForValueType() ? OpCodes.Ldnull : OpCodes.Ldarg_0);
-            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod("GetIndexOfMatchingShim"));
+            ilGenerator.Emit(method.IsStatic || method.IsForValueType() ? OpCodes.Ldnull : OpCodes.Ldarg_0);
+            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.GetIndexOfMatchingShim), new []{typeof(MethodBase), typeof(object)}));
             ilGenerator.Emit(OpCodes.Stloc_1);
             ilGenerator.Emit(OpCodes.Ldloc_1);
             ilGenerator.Emit(OpCodes.Ldc_I4_M1);
