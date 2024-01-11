@@ -335,6 +335,8 @@ namespace Pose.IL
                 StubHelper.GetOwningModule(),
                 true);
 
+            Console.WriteLine("\n" + method);
+
             ILGenerator ilGenerator = stub.GetILGenerator();
 
             if ((method.GetMethodBody() == null && !method.IsAbstract) || StubHelper.IsIntrinsic(method))
@@ -352,6 +354,7 @@ namespace Pose.IL
             }
 
             ilGenerator.DeclareLocal(typeof(MethodInfo));
+            ilGenerator.DeclareLocal(typeof(int));
             ilGenerator.DeclareLocal(typeof(IntPtr));
 
             Label rewriteLabel = ilGenerator.DefineLabel();
@@ -367,25 +370,53 @@ namespace Pose.IL
             // Resolve virtual method to object type
             ilGenerator.Emit(OpCodes.Ldarg_0);
             ilGenerator.Emit(OpCodes.Ldloc_0);
-            ilGenerator.Emit(OpCodes.Call, s_devirtualizeMethodMethod);
-
+            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.DevirtualizeMethod), new Type[] { typeof(object), typeof(MethodInfo) }));
+            ilGenerator.Emit(OpCodes.Stloc_0);
+            
+            ilGenerator.Emit(OpCodes.Ldloc_0);
+            ilGenerator.Emit(method.IsForValueType() ? OpCodes.Ldnull : OpCodes.Ldarg_0);
+            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.GetIndexOfMatchingShim), new Type[] {typeof(MethodBase), typeof(object)}));
+            ilGenerator.Emit(OpCodes.Stloc_1);
+            ilGenerator.Emit(OpCodes.Ldloc_1);
+            ilGenerator.Emit(OpCodes.Ldc_I4_M1);
+            ilGenerator.Emit(OpCodes.Ceq);
+            ilGenerator.Emit(OpCodes.Brtrue_S, rewriteLabel);
+            ilGenerator.Emit(OpCodes.Ldloc_1);
+            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod("GetShimReplacementMethod"));
+            ilGenerator.Emit(OpCodes.Stloc_0);
+            ilGenerator.Emit(OpCodes.Ldloc_0);
+            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod("GetMethodPointer"));
+            ilGenerator.Emit(OpCodes.Stloc_2);
+            ilGenerator.Emit(OpCodes.Ldloc_1);
+            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod("GetShimDelegateTarget"));
+            for (int i = 0; i < signatureParamTypes.Count; i++)
+                ilGenerator.Emit(OpCodes.Ldarg, i);
+            ilGenerator.Emit(OpCodes.Ldloc_2);
+            ilGenerator.EmitCalli(OpCodes.Calli, CallingConventions.HasThis, method.ReturnType, signatureParamTypes.ToArray(), null);
+            ilGenerator.Emit(OpCodes.Br_S, returnLabel);
+            
             // Rewrite resolved method
             ilGenerator.MarkLabel(rewriteLabel);
+            ilGenerator.Emit(OpCodes.Ldloc_0);
             ilGenerator.Emit(method.DeclaringType.IsInterface ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
             ilGenerator.Emit(OpCodes.Call, s_createRewriterMethod);
             ilGenerator.Emit(OpCodes.Call, s_rewriteMethod);
             ilGenerator.Emit(OpCodes.Castclass, typeof(MethodInfo));
-
-            // Retrieve pointer to rewritten method
-            ilGenerator.Emit(OpCodes.Call, s_getMethodPointerMethod);
-            ilGenerator.Emit(OpCodes.Stloc_1);
+            ilGenerator.Emit(OpCodes.Stloc_0);
 
             // Setup stack and make indirect call
             for (int i = 0; i < signatureParamTypes.Count; i++)
             {
                 ilGenerator.Emit(OpCodes.Ldarg, i);
             }
-            ilGenerator.Emit(OpCodes.Ldloc_1);
+            
+            ilGenerator.Emit(OpCodes.Ldloc_0);
+            
+            // Retrieve pointer to rewritten method
+            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.GetMethodPointer)));
+            ilGenerator.Emit(OpCodes.Stloc_0);
+
+            ilGenerator.Emit(OpCodes.Ldloc_0);
             ilGenerator.EmitCalli(OpCodes.Calli, CallingConventions.Standard, method.ReturnType, signatureParamTypes.ToArray(), null);
 
             ilGenerator.MarkLabel(returnLabel);

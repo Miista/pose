@@ -117,7 +117,7 @@ namespace Pose.Tests
         }
         
         [TestMethod]
-        public void Sandbox()
+        public void Can_shim_static_property()
         {
             Func<DateTime> action = new Func<DateTime>(() => new DateTime(2004, 1, 1));
             Shim shim = Shim.Replace(() => DateTime.Now).With(action);
@@ -128,6 +128,140 @@ namespace Pose.Tests
             Assert.AreEqual(2004, dt.Year);
             Assert.AreEqual(1, dt.Day);
             Assert.AreEqual(1, dt.Month);
+        }
+
+        private class Instance
+        {
+            public string Text { get; set; } = "_";
+            
+            public string GetString()
+            {
+                return "!";
+            }
+
+            public static string StaticString { get; set; } = "?";
+
+            public static string StaticMethod()
+            {
+                return "0";
+            }
+        }
+        
+        private struct InstanceValue
+        {
+            public string GetString()
+            {
+                return "!";
+            }
+        }
+        
+        [TestMethod]
+        public void Can_shim_instance_property_getter()
+        {
+            var instance = new Instance();
+            Func<Instance, string> action = new Func<Instance, string>((Instance @this) => "Hello");
+            Shim shim = Shim.Replace(() => instance.Text).With(action);
+
+            string dt = default;
+            PoseContext.Isolate(() => { dt = instance.Text; }, shim);
+            
+            Assert.AreEqual("Hello", dt);
+        }
+        
+        [TestMethod]
+        public void Can_shim_instance_property_setter()
+        {
+            var instance = new Instance();
+            var wasCalled = false;
+            Action<Instance, string> action = new Action<Instance, string>((Instance @this, string prop) => { wasCalled = true; });
+            Shim shim = Shim.Replace(() => Is.A<Instance>().Text, true).With(action);
+
+            Assert.IsFalse(wasCalled);
+            PoseContext.Isolate(() => { instance.Text = "Hello"; }, shim);
+            Assert.IsTrue(wasCalled);
+        }
+        
+        [TestMethod]
+        public void Can_shim_static_property_getter()
+        {
+            Func<string> action = new Func<string>(() => "Hello");
+            Shim shim = Shim.Replace(() => Instance.StaticString).With(action);
+
+            string dt = default;
+            PoseContext.Isolate(() => { dt = Instance.StaticString; }, shim);
+            
+            Assert.AreEqual("Hello", dt);
+        }
+
+        [TestMethod]
+        public void Can_shim_static_property_setter()
+        {
+            var wasCalled = false;
+            Action<string> action = new Action<string>(prop => { wasCalled = true; });
+            Shim shim = Shim.Replace(() => Instance.StaticString, true).With(action);
+
+            Assert.IsFalse(wasCalled);
+            PoseContext.Isolate(() => { Instance.StaticString = "Hello"; }, shim);
+            Assert.IsTrue(wasCalled);
+        }
+        
+        [TestMethod]
+        public void Can_shim_instance_method()
+        {
+            Func<Instance, string> action = new Func<Instance, string>((Instance @this) => "String");
+            Shim shim = Shim.Replace(() => Is.A<Instance>().GetString()).With(action);
+
+            string dt = default;
+            PoseContext.Isolate(
+                () =>
+                {
+                    var instance = new Instance();
+                    dt = instance.GetString();
+                }, shim);
+            
+            Assert.AreEqual("String", dt);
+        }
+        
+        [TestMethod]
+        public void Can_shim_instance_method_of_value_type()
+        {
+            Func<InstanceValue, string> action = new Func<InstanceValue, string>((InstanceValue @this) => "String");
+            Shim shim = Shim.Replace(() => Is.A<InstanceValue>().GetString()).With(action);
+
+            string dt = default;
+            PoseContext.Isolate(
+                () =>
+                {
+                    var instance = new InstanceValue();
+                    dt = instance.GetString();
+                }, shim);
+            
+            Assert.AreEqual("String", dt);
+        }
+        
+        [TestMethod]
+        public void Can_shim_instance_method_of_specific_instance()
+        {
+            var instance = new Instance();
+            Func<Instance, string> action = new Func<Instance, string>((Instance @this) => "String");
+            Shim shim = Shim.Replace(() => instance.GetString()).With(action);
+
+            string dt = default;
+            PoseContext.Isolate(() => { dt = instance.GetString(); }, shim);
+            
+            Assert.AreEqual("String", dt);
+        }
+        
+        [TestMethod]
+        public void Can_shim_static_method()
+        {
+            Func<string> action = new Func<string>(() => "String");
+            Shim shim = Shim.Replace(() => Instance.StaticMethod()).With(action);
+
+            string dt = default;
+            PoseContext.Isolate(() => { dt = Instance.StaticMethod(); }, shim);
+            
+            Assert.AreEqual("String", dt);
         }
     }
 }

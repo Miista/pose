@@ -24,15 +24,15 @@ namespace Pose.Sandbox
                 {
                     // Console.Write(T.I);
                     // Console.WriteLine(T.Get());
-                    // Console.WriteLine(inst.S);
-                    Console.WriteLine(T.I);
-                }, dateTimeShim);
+                    Console.WriteLine(inst.S);
+                    // Console.WriteLine(T.I);
+                }, dateTimeShim, dateTimeShim4);
         }
     }
 
     public class Inst
     {
-        public string S { get; set; }
+        public string S { get; set; } = "_";
 
         public string Get()
         {
