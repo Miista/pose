@@ -1,13 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
 using FluentAssertions;
 using Pose.Exceptions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Pose.Delegates;
 using Xunit;
 using Assert = Microsoft.VisualStudio.TestTools.UnitTesting.Assert;
 

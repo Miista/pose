@@ -1,10 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
-using System.Reflection.Emit;
 using FluentAssertions;
-using Pose.Helpers;
 using Pose.IL;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Xunit;
