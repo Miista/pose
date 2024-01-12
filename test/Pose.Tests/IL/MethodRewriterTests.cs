@@ -9,8 +9,6 @@ using Xunit;
 
 namespace Pose.Tests
 {
-    using Assert = Microsoft.VisualStudio.TestTools.UnitTesting.Assert;
-    
     public class MethodRewriterTests
     {
         [Fact]
@@ -25,7 +23,7 @@ namespace Pose.Tests
             var func = dynamicMethod.CreateDelegate(typeof(Func<DateTime>));
 
             // Assert
-            Assert.AreEqual(DateTime.Now.ToString("yyyyMMdd_HHmm"), ((DateTime)func.DynamicInvoke()).ToString("yyyyMMdd_HHmm"));
+            func.DynamicInvoke().As<DateTime>().Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(10));
         }
         
         [Fact]
@@ -40,7 +38,7 @@ namespace Pose.Tests
             var func = dynamicMethod.CreateDelegate(typeof(Func<DateTime>));
 
             // Assert
-            Assert.AreEqual(DateTime.Now.ToString("yyyyMMdd_HHmm"), ((DateTime)func.DynamicInvoke()).ToString("yyyyMMdd_HHmm"));
+            func.DynamicInvoke().As<DateTime>().Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(10));
         }
 
         [Fact]
