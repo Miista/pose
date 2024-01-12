@@ -56,10 +56,11 @@ namespace Pose.Helpers
             var shimOwningType = isStaticOrConstructor
                 ? validOwningType : replacement.GetParameters().Select(p => p.ParameterType).FirstOrDefault();
 
-            var validParameterTypes = original.GetParameters().Select(p => p.ParameterType);
+            var validParameterTypes = original.GetParameters().Select(p => p.ParameterType).ToArray();
             var shimParameterTypes = replacement.GetParameters()
                                         .Select(p => p.ParameterType)
-                                        .Skip(isStaticOrConstructor ? 0 : 1);
+                                        .Skip(isStaticOrConstructor ? 0 : 1)
+                                        .ToArray();
 
             if (vaildReturnType != shimReturnType)
                 throw new InvalidShimSignatureException("Mismatched return types");
