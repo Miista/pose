@@ -2,12 +2,10 @@ using System;
 using System.Reflection.Emit;
 using FluentAssertions;
 using Pose.Helpers;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Xunit;
 
 namespace Pose.Tests
 {
-    [TestClass]
     public class StubHelperTests
     {
         [Fact]
