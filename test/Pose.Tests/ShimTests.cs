@@ -251,6 +251,27 @@ namespace Pose.Tests
             
             Assert.AreEqual("String", dt);
         }
+                
+        [TestMethod]
+        public void Can_shim_instance_method_of_specific_instance_1()
+        {
+            var instance = new Instance();
+            Func<Instance, string> action = new Func<Instance, string>((Instance @this) => "String");
+            Shim shim = Shim.Replace(() => instance.GetString()).With(action);
+
+            string dt1 = default;
+            string dt2 = default;
+            PoseContext.Isolate(
+                () =>
+                {
+                    dt1 = instance.GetString();
+                    var instance2 = new Instance();
+                    dt2 = instance2.GetString();
+                }, shim);
+            
+            Assert.AreEqual("String", dt1);
+            Assert.AreEqual("!", dt2);
+        }
         
         [TestMethod]
         public void Can_shim_static_method()
