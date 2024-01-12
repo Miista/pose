@@ -373,11 +373,8 @@ namespace Pose.IL
         {
             if (constructorInfo.InCoreLibrary())
             {
-                var declaringType = constructorInfo.DeclaringType ?? throw new Exception($"Constructor {constructorInfo.Name} does not have a {nameof(ConstructorInfo.DeclaringType)}");
-                
                 // Don't attempt to rewrite inaccessible constructors in System.Private.CoreLib/mscorlib
-                if (!declaringType.IsPublic) goto forward;
-                if (!constructorInfo.IsPublic && !constructorInfo.IsFamily && !constructorInfo.IsFamilyOrAssembly) goto forward;
+                if (ShouldForward(constructorInfo)) goto forward;
             }
 
             if (instruction.OpCode == OpCodes.Call)
@@ -414,8 +411,7 @@ namespace Pose.IL
             if (methodInfo.InCoreLibrary())
             {
                 // Don't attempt to rewrite inaccessible methods in System.Private.CoreLib/mscorlib
-                if (!methodInfo.DeclaringType.IsPublic) goto forward;
-                if (!methodInfo.IsPublic && !methodInfo.IsFamily && !methodInfo.IsFamilyOrAssembly) goto forward;
+                if (ShouldForward(methodInfo)) goto forward;
             }
 
             if (instruction.OpCode == OpCodes.Call)
