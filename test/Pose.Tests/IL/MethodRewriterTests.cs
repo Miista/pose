@@ -5,6 +5,7 @@ using System.Reflection.Emit;
 using FluentAssertions;
 using Pose.IL;
 using Xunit;
+// ReSharper disable PossibleNullReferenceException
 
 namespace Pose.Tests
 {
@@ -85,23 +86,26 @@ namespace Pose.Tests
         public void Can_rewrite_try_catch_blocks()
         {
             var called = false;
+            var enteredCatchBlock = false;
             
             Action act = () => PoseContext.Isolate(
                 () =>
                 {
                     try
                     {
+                        // ReSharper disable once Xunit.XunitTestWithConsoleOutput
                         Console.WriteLine("H");
                         called = true;
                     }
                     catch (Exception e)
                     {
-                        
+                        enteredCatchBlock = true;
                     }
                 });
 
             act.Should().NotThrow();
             called.Should().BeTrue();
+            enteredCatchBlock.Should().BeFalse();
         }
     }
 }
