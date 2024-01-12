@@ -3,24 +3,27 @@ using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
 using Pose.IL;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Xunit;
-using Assert = Microsoft.VisualStudio.TestTools.UnitTesting.Assert;
+
+// ReSharper disable PossibleNullReferenceException
 
 namespace Pose.Tests
 {
-    [TestClass]
     public class StubsTests
     {
-        [TestMethod]
+        [Fact]
         public void TestGenerateStubForStaticMethod()
         {
-            var methodInfo = typeof(Console).GetMethod("WriteLine", new[] { typeof(string) });
+            // Arrange
+            var methodInfo = typeof(Console).GetMethod(nameof(Console.WriteLine), new[] { typeof(string) });
             var dynamicMethod = Stubs.GenerateStubForDirectCall(methodInfo);
-            var count = dynamicMethod.GetParameters().Length;
+            
+            var dynamicMethodParameters = dynamicMethod.GetParameters();
+            var methodParameters = methodInfo.GetParameters();
 
-            Assert.AreEqual(methodInfo.GetParameters().Length, dynamicMethod.GetParameters().Length);
-            Assert.AreEqual(methodInfo.GetParameters()[0].ParameterType, dynamicMethod.GetParameters()[0].ParameterType);
+            // Assert
+            dynamicMethodParameters.Should().HaveSameCount(methodParameters);
+            dynamicMethodParameters.FirstOrDefault()?.ParameterType.Should().Be(methodParameters.FirstOrDefault()?.ParameterType);
         }
         
         [Fact]
