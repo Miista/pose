@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using FluentAssertions;
 // ReSharper disable once RedundantUsingDirective
+// The using statement is not redundant on platforms targeting net48
 using Pose.Extensions;
 using Xunit;
 
