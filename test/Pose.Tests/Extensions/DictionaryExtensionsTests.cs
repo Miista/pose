@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using FluentAssertions;
+// ReSharper disable once RedundantUsingDirective
+using Pose.Extensions;
 using Xunit;
 
 namespace Pose.Tests
