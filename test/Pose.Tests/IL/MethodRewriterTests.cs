@@ -11,26 +11,31 @@ namespace Pose.Tests
 {
     public class MethodRewriterTests
     {
+        private class ClassWithStaticMethod
+        {
+            public static string Now { get; } = "?";
+        }
+        
         [Fact]
         public void Can_rewrite_static_method()
         {
             // Arrange
-            var methodInfo = typeof(DateTime).GetMethod("get_Now");
+            var methodInfo = typeof(ClassWithStaticMethod).GetMethod("get_Now");
             var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
 
             // Act
             var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
-            var func = dynamicMethod.CreateDelegate(typeof(Func<DateTime>));
+            var func = dynamicMethod.CreateDelegate(typeof(Func<string>));
 
             // Assert
-            func.DynamicInvoke().As<DateTime>().Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(10));
+            func.DynamicInvoke().As<string>().Should().BeEquivalentTo("?");
         }
         
         [Fact]
         public void Cannot_rewrite_method_in_CoreLib()
         {
             // Arrange
-            var methodInfo = typeof(DateTime).GetMethod("get_Now");
+            var methodInfo = typeof(DateTime).GetMethod("get_UtcNow");
             var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
 
             // Act
@@ -38,7 +43,7 @@ namespace Pose.Tests
             var func = dynamicMethod.CreateDelegate(typeof(Func<DateTime>));
 
             // Assert
-            func.DynamicInvoke().As<DateTime>().Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(10));
+            func.DynamicInvoke().As<DateTime>().Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(10));
         }
 
         [Fact]

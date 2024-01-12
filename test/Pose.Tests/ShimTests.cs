@@ -4,11 +4,13 @@ using System.Reflection;
 using System.Threading;
 using FluentAssertions;
 using Pose.Exceptions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Xunit;
 
 // ReSharper disable RedundantLambdaParameterType
 // ReSharper disable PossibleNullReferenceException
+
+// See: https://stackoverflow.com/a/34876963
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace Pose.Tests
 {
@@ -170,7 +172,7 @@ namespace Pose.Tests
             setterExecuted.Should().BeTrue(because: "the shim was executed");
         }
         
-        [TestMethod]
+        [Fact]
         public void Can_shim_static_property()
         {
             // Arrange
@@ -217,7 +219,7 @@ namespace Pose.Tests
             }
         }
         
-        [TestMethod]
+        [Fact]
         public void Can_shim_instance_property_getter()
         {
             // Arrange
@@ -233,7 +235,7 @@ namespace Pose.Tests
             dt.Should().BeEquivalentTo("Hello", because: "that is what the shim is configured to return");
         }
         
-        [TestMethod]
+        [Fact]
         public void Can_shim_instance_property_setter()
         {
             // Arrange
@@ -250,7 +252,7 @@ namespace Pose.Tests
             wasCalled.Should().BeTrue(because: "the shim has been called");
         }
         
-        [TestMethod]
+        [Fact]
         public void Can_shim_static_property_getter()
         {
             // Arrange
@@ -265,7 +267,7 @@ namespace Pose.Tests
             dt.Should().BeEquivalentTo("Hello", because: "that is what the shim is configured to return");
         }
 
-        [TestMethod]
+        [Fact]
         public void Can_shim_static_property_setter()
         {
             // Arrange
@@ -279,7 +281,7 @@ namespace Pose.Tests
             wasCalled.Should().BeTrue(because: "the shim has been called");
         }
         
-        [TestMethod]
+        [Fact]
         public void Can_shim_instance_method()
         {
             // Arrange
@@ -299,7 +301,7 @@ namespace Pose.Tests
             dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
         }
         
-        [TestMethod]
+        [Fact]
         public void Can_shim_instance_method_of_value_type()
         {
             // Arrange
@@ -318,7 +320,7 @@ namespace Pose.Tests
             dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
         }
         
-        [TestMethod]
+        [Fact]
         public void Can_shim_instance_method_of_specific_instance()
         {
             // Arrange
@@ -337,7 +339,7 @@ namespace Pose.Tests
             dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
         }
                 
-        [TestMethod]
+        [Fact]
         public void Shims_only_the_method_of_the_specified_instance()
         {
             // Arrange
@@ -362,7 +364,7 @@ namespace Pose.Tests
             responseFromNonShimmedInstance.Should().BeEquivalentTo("!", because: "that is what the instance returns by default");
         }
         
-        [TestMethod]
+        [Fact]
         public void Can_shim_static_method()
         {
             // Arrange
@@ -380,7 +382,7 @@ namespace Pose.Tests
             dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
         }
         
-        [TestMethod]
+        [Fact]
         public void Can_shim_constructor()
         {
             // Arrange
