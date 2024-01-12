@@ -15,30 +15,39 @@ namespace Pose.IL
 {
     internal class MethodRewriter
     {
-        private MethodBase m_method;
+        private MethodBase _method;
+        private Type _owningType;
+        private bool _isInterfaceDispatch;
+        
+        private int _exceptionBlockLevel;
+        private TypeInfo _constrainedType;
 
-        private Type m_owningType;
-
-        private bool m_isInterfaceDispatch;
-
-        private int m_exceptionBlockLevel;
-
-        private TypeInfo m_constrainedType;
+        public MethodRewriter(MethodBase method, Type owningType, bool isInterfaceDispatch)
+        {
+            _method = method ?? throw new ArgumentNullException(nameof(method));
+            _owningType = owningType ?? throw new ArgumentNullException(nameof(owningType));
+            _isInterfaceDispatch = isInterfaceDispatch;
+        }
 
         private static List<OpCode> s_IngoredOpCodes = new List<OpCode> { OpCodes.Endfilter, OpCodes.Endfinally };
 
         public static MethodRewriter CreateRewriter(MethodBase method, bool isInterfaceDispatch)
         {
-            return new MethodRewriter { m_method = method, m_owningType = method.DeclaringType, m_isInterfaceDispatch = isInterfaceDispatch };
+            return new MethodRewriter(
+                method: method,
+                owningType: method.DeclaringType,
+                isInterfaceDispatch: isInterfaceDispatch
+            );
+                // { _method = method, _owningType = method.DeclaringType, _isInterfaceDispatch = isInterfaceDispatch };
         }
 
         public MethodBase Rewrite()
         {
             var parameterTypes = new List<Type>();
-            if (!m_method.IsStatic)
+            if (!_method.IsStatic)
             {
-                var thisType = m_isInterfaceDispatch ? typeof(object) : m_owningType;
-                if (!m_isInterfaceDispatch && m_owningType.IsValueType)
+                var thisType = _isInterfaceDispatch ? typeof(object) : _owningType;
+                if (!_isInterfaceDispatch && _owningType.IsValueType)
                 {
                     thisType = thisType.MakeByRefType();
                 }
@@ -46,23 +55,23 @@ namespace Pose.IL
                 parameterTypes.Add(thisType);
             }
 
-            parameterTypes.AddRange(m_method.GetParameters().Select(p => p.ParameterType));
-            var returnType = m_method.IsConstructor ? typeof(void) : (m_method as MethodInfo).ReturnType;
+            parameterTypes.AddRange(_method.GetParameters().Select(p => p.ParameterType));
+            var returnType = _method.IsConstructor ? typeof(void) : (_method as MethodInfo).ReturnType;
 
             var dynamicMethod = new DynamicMethod(
-                StubHelper.CreateStubNameFromMethod("impl", m_method),
+                StubHelper.CreateStubNameFromMethod("impl", _method),
                 returnType,
                 parameterTypes.ToArray(),
                 StubHelper.GetOwningModule(),
                 true);
 
-            var methodBody = m_method.GetMethodBody();
+            var methodBody = _method.GetMethodBody();
             var locals = methodBody.LocalVariables;
             var targetInstructions = new Dictionary<int, Label>();
             var handlers = new List<ExceptionHandler>();
 
             var ilGenerator = dynamicMethod.GetILGenerator();
-            var instructions = m_method.GetInstructions();
+            var instructions = _method.GetInstructions();
 
             foreach (var clause in methodBody.ExceptionHandlingClauses)
             {
@@ -98,7 +107,7 @@ namespace Pose.IL
             }
 
 #if DEBUG
-            Console.WriteLine("\n" + m_method);
+            Console.WriteLine("\n" + _method);
 #endif
 
             foreach (var instruction in instructions)
@@ -178,7 +187,7 @@ namespace Pose.IL
             foreach (var tryBlock in tryBlocks)
             {
                 ilGenerator.BeginExceptionBlock();
-                m_exceptionBlockLevel++;
+                _exceptionBlockLevel++;
             }
 
             var filterBlock = handlers.FirstOrDefault(h => h.FilterStart == instruction.Offset);
@@ -194,13 +203,13 @@ namespace Pose.IL
                 {
                     // Finally blocks are always the last handler
                     ilGenerator.EndExceptionBlock();
-                    m_exceptionBlockLevel--;
+                    _exceptionBlockLevel--;
                 }
                 else if (handler.HandlerEnd == handlers.Where(h => h.TryStart == handler.TryStart && h.TryEnd == handler.TryEnd).Max(h => h.HandlerEnd))
                 {
                     // We're dealing with the last catch block
                     ilGenerator.EndExceptionBlock();
-                    m_exceptionBlockLevel--;
+                    _exceptionBlockLevel--;
                 }
             }
 
@@ -229,13 +238,13 @@ namespace Pose.IL
 
         private void EmitThisPointerAccessForBoxedValueType(ILGenerator ilGenerator)
         {
-            ilGenerator.Emit(OpCodes.Call, typeof(Unsafe).GetMethod("Unbox").MakeGenericMethod(m_method.DeclaringType));
+            ilGenerator.Emit(OpCodes.Call, typeof(Unsafe).GetMethod("Unbox").MakeGenericMethod(_method.DeclaringType));
         }
 
         private void EmitILForInlineNone(ILGenerator ilGenerator, Instruction instruction)
         {
             ilGenerator.Emit(instruction.OpCode);
-            if (m_isInterfaceDispatch && m_owningType.IsValueType && instruction.OpCode == OpCodes.Ldarg_0)
+            if (_isInterfaceDispatch && _owningType.IsValueType && instruction.OpCode == OpCodes.Ldarg_0)
             {
                 EmitThisPointerAccessForBoxedValueType(ilGenerator);
             }
@@ -289,7 +298,7 @@ namespace Pose.IL
 
             // Check if 'Leave' opcode is being used in an exception block,
             // only emit it if that's not the case
-            if (opCode == OpCodes.Leave && m_exceptionBlockLevel > 0) return;
+            if (opCode == OpCodes.Leave && _exceptionBlockLevel > 0) return;
 
             ilGenerator.Emit(opCode, targetLabel);
         }
@@ -314,7 +323,7 @@ namespace Pose.IL
             else
             {
                 index = ((ParameterInfo)instruction.Operand).Position;
-                index += m_method.IsStatic ? 0 : 1;
+                index += _method.IsStatic ? 0 : 1;
             }
 
             if (instruction.OpCode.OperandType == OperandType.ShortInlineVar)
@@ -322,7 +331,7 @@ namespace Pose.IL
             else
                 ilGenerator.Emit(instruction.OpCode, (ushort)index);
 
-            if (m_isInterfaceDispatch && m_owningType.IsValueType && instruction.OpCode.Name.StartsWith("ldarg") && index == 0)
+            if (_isInterfaceDispatch && _owningType.IsValueType && instruction.OpCode.Name.StartsWith("ldarg") && index == 0)
             {
                 EmitThisPointerAccessForBoxedValueType(ilGenerator);
             }
@@ -332,7 +341,7 @@ namespace Pose.IL
         {
             if (instruction.OpCode == OpCodes.Constrained)
             {
-                m_constrainedType = typeInfo;
+                _constrainedType = typeInfo;
                 return;
             }
 
@@ -343,7 +352,7 @@ namespace Pose.IL
         {
             if (constructorInfo.InCoreLibrary())
             {
-                // Don't attempt to rewrite unaccessible constructors in System.Private.CoreLib/mscorlib
+                // Don't attempt to rewrite inaccessible constructors in System.Private.CoreLib/mscorlib
                 if (!constructorInfo.DeclaringType.IsPublic) goto forward;
                 if (!constructorInfo.IsPublic && !constructorInfo.IsFamily && !constructorInfo.IsFamilyOrAssembly) goto forward;
             }
@@ -394,10 +403,10 @@ namespace Pose.IL
 
             if (instruction.OpCode == OpCodes.Callvirt)
             {
-                if (m_constrainedType != null)
+                if (_constrainedType != null)
                 {
-                    ilGenerator.Emit(OpCodes.Call, Stubs.GenerateStubForVirtualCall(methodInfo, m_constrainedType));
-                    m_constrainedType = null;
+                    ilGenerator.Emit(OpCodes.Call, Stubs.GenerateStubForVirtualCall(methodInfo, _constrainedType));
+                    _constrainedType = null;
                     return;
                 }
 

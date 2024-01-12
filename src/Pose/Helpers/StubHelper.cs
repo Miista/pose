@@ -68,9 +68,12 @@ namespace Pose.Helpers
 
         public static string CreateStubNameFromMethod(string prefix, MethodBase method)
         {
+            if (method == null) throw new ArgumentNullException(nameof(method));
+            if (string.IsNullOrWhiteSpace(prefix)) throw new ArgumentException("Value cannot be null or whitespace.", nameof(prefix));
+
             var name = prefix;
             name += "_";
-            name += method.DeclaringType.ToString();
+            name += method.DeclaringType?.ToString() ?? throw new Exception($"Method {method.Name} does not have a {nameof(MethodBase.DeclaringType)}");
             name += "_";
             name += method.Name;
 
@@ -95,14 +98,14 @@ namespace Pose.Helpers
         private static bool SignatureEquals(Shim shim, Type type, MethodBase method)
         {
             if (shim.Type == null || type == shim.Type)
-                return $"{shim.Type}::{shim.Original.ToString()}" == $"{type}::{method.ToString()}";
+                return $"{shim.Type}::{shim.Original}" == $"{type}::{method}";
 
             if (type.IsSubclassOf(shim.Type))
             {
                 if ((shim.Original.IsAbstract || !shim.Original.IsVirtual)
                         || (shim.Original.IsVirtual && !method.IsOverride()))
                 {
-                    return $"{shim.Original.ToString()}" == $"{method.ToString()}";
+                    return $"{shim.Original}" == $"{method}";
                 }
             }
 
