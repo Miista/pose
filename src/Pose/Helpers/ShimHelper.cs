@@ -15,11 +15,11 @@ namespace Pose.Helpers
             {
                 case ExpressionType.MemberAccess:
                     {
-                        var memberExpression = expression as MemberExpression;
+                        var memberExpression = expression as MemberExpression ?? throw new Exception($"Cannot cast expression to {nameof(MemberExpression)}");
                         var memberInfo = memberExpression.Member;
                         if (memberInfo.MemberType == MemberTypes.Property)
                         {
-                            var propertyInfo = memberInfo as PropertyInfo;
+                            var propertyInfo = memberInfo as PropertyInfo ?? throw new Exception($"Cannot cast {nameof(memberInfo)} to {nameof(PropertyInfo)}");
                             instanceOrType = GetObjectInstanceOrType(memberExpression.Expression);
                             return setter ? propertyInfo.GetSetMethod() : propertyInfo.GetGetMethod();
                         }
@@ -29,11 +29,11 @@ namespace Pose.Helpers
                         }
                     }
                 case ExpressionType.Call:
-                    var methodCallExpression = expression as MethodCallExpression;
+                    var methodCallExpression = expression as MethodCallExpression ?? throw new Exception($"Cannot cast expression to {nameof(MethodCallExpression)}");
                     instanceOrType = GetObjectInstanceOrType(methodCallExpression.Object);
                     return methodCallExpression.Method;
                 case ExpressionType.New:
-                    var newExpression = expression as NewExpression;
+                    var newExpression = expression as NewExpression ?? throw new Exception($"Cannot cast expression to {nameof(NewExpression)}");
                     instanceOrType = null;
                     return newExpression.Constructor;
                 default:
@@ -43,13 +43,16 @@ namespace Pose.Helpers
 
         public static void ValidateReplacementMethodSignature(MethodBase original, MethodInfo replacement, Type type, bool setter)
         {
-            var isValueType = original.DeclaringType.IsValueType;
+            if (original == null) throw new ArgumentNullException(nameof(original));
+            if (replacement == null) throw new ArgumentNullException(nameof(replacement));
+
+            var isValueType = original.DeclaringType?.IsValueType ?? throw new Exception($"Method {original.Name} does not have a {nameof(MethodBase.DeclaringType)}");
             var isStatic = original.IsStatic;
             var isConstructor = original.IsConstructor;
             var isStaticOrConstructor = isStatic || isConstructor;
 
-            var vaildReturnType = isConstructor ? original.DeclaringType : (original as MethodInfo).ReturnType;
-            vaildReturnType = setter ? typeof(void) : vaildReturnType;
+            var validReturnType = isConstructor ? original.DeclaringType : (original as MethodInfo).ReturnType;
+            validReturnType = setter ? typeof(void) : validReturnType;
             var shimReturnType = replacement.ReturnType;
 
             var validOwningType = type;
@@ -62,7 +65,7 @@ namespace Pose.Helpers
                                         .Skip(isStaticOrConstructor ? 0 : 1)
                                         .ToArray();
 
-            if (vaildReturnType != shimReturnType)
+            if (validReturnType != shimReturnType)
                 throw new InvalidShimSignatureException("Mismatched return types");
 
             if (!isStaticOrConstructor)
@@ -91,18 +94,19 @@ namespace Pose.Helpers
             {
                 case ExpressionType.MemberAccess:
                     {
-                        var memberExpression = expression as MemberExpression;
+                        var memberExpression = expression as MemberExpression ?? throw new Exception($"Cannot cast expression to {nameof(MemberExpression)}");
                         var constantExpression = memberExpression.Expression as ConstantExpression;
+                        
                         if (memberExpression.Member.MemberType == MemberTypes.Field)
                         {
-                            var fieldInfo = (memberExpression.Member as FieldInfo);
-                            var obj = fieldInfo.IsStatic ? null : constantExpression.Value;
+                            var fieldInfo = memberExpression.Member as FieldInfo ?? throw new Exception($"Cannot cast {nameof(MemberExpression.Member)} to {nameof(FieldInfo)}");
+                            var obj = fieldInfo.IsStatic ? null : constantExpression?.Value;
                             instanceOrType = fieldInfo.GetValue(obj);
                         }
                         else if (memberExpression.Member.MemberType == MemberTypes.Property)
                         {
-                            var propertyInfo = (memberExpression.Member as PropertyInfo);
-                            var obj = propertyInfo.GetMethod.IsStatic ? null : constantExpression.Value;
+                            var propertyInfo = memberExpression.Member as PropertyInfo ?? throw new Exception($"Cannot cast {nameof(MemberExpression.Member)} to {nameof(PropertyInfo)}");
+                            var obj = propertyInfo.GetMethod.IsStatic ? null : constantExpression?.Value;
                             instanceOrType = propertyInfo.GetValue(obj);
                         }
                         EnsureInstanceNotValueType(instanceOrType);
@@ -110,7 +114,7 @@ namespace Pose.Helpers
                     }
                 case ExpressionType.Call:
                     {
-                        var methodCallExpression = expression as MethodCallExpression;
+                        var methodCallExpression = expression as MethodCallExpression ?? throw new Exception($"Cannot cast expression to {nameof(MethodCallExpression)}");
                         var methodInfo = methodCallExpression.Method;
                         instanceOrType = methodInfo.GetGenericArguments().FirstOrDefault();
                         break;
