@@ -11,7 +11,7 @@ namespace Pose
     {
         private MethodBase _original;
         private Delegate _replacement;
-        private Object _instance;
+        private object _instance;
         private Type _type;
         private bool _setter;
 
@@ -31,7 +31,7 @@ namespace Pose
             }
         }
 
-        internal Object Instance
+        internal object Instance
         {
             get
             {

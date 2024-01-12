@@ -32,7 +32,7 @@ namespace Pose.Helpers
                 return Array.FindIndex(PoseContext.Shims, s => s.Original == methodBase);
 
             var index = Array.FindIndex(PoseContext.Shims,
-                s => Object.ReferenceEquals(obj, s.Instance) && s.Original == methodBase);
+                s => object.ReferenceEquals(obj, s.Instance) && s.Original == methodBase);
 
             if (index == -1)
                 return Array.FindIndex(PoseContext.Shims,

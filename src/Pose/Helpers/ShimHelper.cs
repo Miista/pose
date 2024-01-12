@@ -11,7 +11,7 @@ namespace Pose.Helpers
 {
     internal static class ShimHelper
     {
-        public static MethodBase GetMethodFromExpression(Expression expression, bool setter, out Object instanceOrType)
+        public static MethodBase GetMethodFromExpression(Expression expression, bool setter, out object instanceOrType)
         {
             switch (expression.NodeType)
             {
