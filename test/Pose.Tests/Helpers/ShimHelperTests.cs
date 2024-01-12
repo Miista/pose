@@ -5,6 +5,7 @@ using System.Reflection;
 using FluentAssertions;
 using Pose.Helpers;
 using Xunit;
+// ReSharper disable PossibleNullReferenceException
 
 namespace Pose.Tests
 {

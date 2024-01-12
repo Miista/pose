@@ -83,6 +83,100 @@ namespace Pose.Tests
         }
         
         [Fact]
+        public void Can_rewrite_try_catch_returning_from_try()
+        {
+            // Arrange
+            var methodInfo = typeof(MethodRewriterTests).GetMethod(nameof(TryCatch_ReturnsFromTry));
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+            var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+
+            // Act
+            var func = dynamicMethod.CreateDelegate(typeof(Func<int>));
+            var result = (int) func.DynamicInvoke();
+
+            // Assert
+            result.Should().Be(1, because: "that is what the method returns from the try block");
+        }
+
+        public static int TryCatch_ReturnsFromTry()
+        {
+            try
+            {
+                return 1;
+            }
+            catch
+            {
+                return 0;
+            }
+            finally {}
+        }
+
+        [Fact]
+        public void Can_rewrite_try_catch_returning_from_catch()
+        {
+            // Arrange
+            var methodInfo = typeof(MethodRewriterTests).GetMethod(nameof(TryCatch_ReturnsFromCatch));
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+            var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+
+            // Act
+            var func = dynamicMethod.CreateDelegate(typeof(Func<int>));
+            var result = (int) func.DynamicInvoke();
+
+            // Assert
+            result.Should().Be(0, because: "that is what the method returns from the catch block");
+        }
+
+        public static int TryCatch_ReturnsFromCatch()
+        {
+            try
+            {
+                throw new Exception();
+            }
+            catch
+            {
+                return 0;
+            }
+            finally {}
+        }
+        
+        [Fact]
+        public void Can_rewrite_try_catch_returning_from_finally()
+        {
+            // Arrange
+            var methodInfo = typeof(MethodRewriterTests).GetMethod(nameof(TryCatch_ReturnsFromFinally));
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+            var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+
+            // Act
+            var func = dynamicMethod.CreateDelegate(typeof(Func<int>));
+            var result = (int) func.DynamicInvoke();
+
+            // Assert
+            result.Should().Be(3, because: "that is what the method returns from the finally block");
+        }
+
+        public static int TryCatch_ReturnsFromFinally()
+        {
+            int value = 0;
+            try
+            {
+                value = 1;
+                throw new Exception();
+            }
+            catch
+            {
+                value = 2;
+            }
+            finally
+            {
+                value = 3;
+            }
+
+            return value;
+        }
+        
+        [Fact]
         public void Can_rewrite_try_catch_blocks()
         {
             var called = false;
