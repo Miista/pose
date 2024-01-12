@@ -1,64 +1,94 @@
 using System;
+using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
-
+using FluentAssertions;
 using Pose.Helpers;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
-using static System.Console;
+using Xunit;
 
 namespace Pose.Tests
 {
-    [TestClass]
     public class ShimHelperTests
     {
-        [TestMethod]
-        public void TestGetMethodFromExpressionThrowNotImplemented()
+        [Theory]
+        [MemberData(nameof(Throws_NotImplementedException_Data))]
+        public void Throws_NotImplementedException<T>(Expression<Func<T>> expression, string reason)
         {
-            Expression<Func<bool>> expr = () => true;
-            Expression<Func<DateTime>> expr1 = () => DateTime.MaxValue;
-
-            Assert.ThrowsException<NotImplementedException>(
-                () => ShimHelper.GetMethodFromExpression(expr.Body, false, out Object instance));
-
-            Assert.ThrowsException<NotImplementedException>(
-                () => ShimHelper.GetMethodFromExpression(expr1.Body, false, out Object instance));
+            // Act
+            Action act = () => ShimHelper.GetMethodFromExpression(expression.Body, false, out _);
+            
+            // Assert
+            act.Should().Throw<NotImplementedException>(because: reason);
         }
 
-        [TestMethod]
-        public void TestGetMethodFromExpressionValid()
+        // ReSharper disable once InconsistentNaming
+        public static IEnumerable<object[]> Throws_NotImplementedException_Data
         {
-            Expression<Func<DateTime>> expr = () => DateTime.Now;
-            Expression<Func<string>> expr1 = () => ReadLine();
-
-            Assert.AreEqual<MethodBase>(typeof(DateTime).GetMethod("get_Now"),
-                ShimHelper.GetMethodFromExpression(expr.Body, false, out Object instance));
-
-            Assert.AreEqual<MethodBase>(typeof(Console).GetMethod("ReadLine"),
-                ShimHelper.GetMethodFromExpression(expr1.Body, false, out instance));
+            get
+            {
+                yield return TestCase(() => true, "Constant expressions are not supported");
+                yield return TestCase(() => DateTime.MaxValue, "Field access is not supported in general");
+                yield return TestCase(() => string.Empty, "Field access is not supported in general");
+                
+                object[] TestCase<T>(Expression<Func<T>> expression, string reason)
+                {
+                    return new object[] { expression, reason };
+                }
+            }
+        }
+        [Theory]
+        [MemberData(nameof(Can_get_method_from_valid_expression_Data))]
+        public void Can_get_method_from_valid_expression<T>(Expression<Func<T>> expression, MethodInfo expectedMethod)
+        {
+            // Act
+            var methodFromExpression = ShimHelper.GetMethodFromExpression(expression.Body, false, out _);
+            
+            // Assert
+            methodFromExpression.Should().BeEquivalentTo(expectedMethod);
         }
 
-        [TestMethod]
-        public void TestGetObjectInstanceFromExpressionValueType()
+        // ReSharper disable once InconsistentNaming
+        public static IEnumerable<object[]> Can_get_method_from_valid_expression_Data
         {
-            DateTime dateTime = new DateTime();
+            get
+            {
+                yield return TestCase(() => DateTime.Now, typeof(DateTime).GetMethod("get_Now"));
+                yield return TestCase(() => Console.ReadLine(), typeof(Console).GetMethod(nameof(Console.ReadLine)));
+                object[] TestCase<T>(Expression<Func<T>> expression, MethodInfo expectedMethod)
+                {
+                    return new object[] { expression, expectedMethod };
+                }
+            }
+        }
+        [Fact]
+        public void Throws_when_getting_object_instance_for_value_type()
+        {
+            // Arrange
+            var dateTime = new DateTime();
             Expression<Func<DateTime>> expression = () => dateTime.AddDays(2);
 
-            Assert.ThrowsException<NotSupportedException>(
-                () => ShimHelper.GetObjectInstanceOrType((expression.Body as MethodCallExpression).Object));
+            // Act
+            Action act = () => ShimHelper.GetObjectInstanceOrType((expression.Body as MethodCallExpression).Object);
+            
+            // Assert
+            act.Should().Throw<NotSupportedException>(because: "value types are not supported");
         }
 
-        [TestMethod]
-        public void TestGetObjectInstanceFromExpression()
+        [Fact]
+        public void Can_get_object_instance_from_expression()
         {
-            ShimHelperTests shimHelperTests = new ShimHelperTests();
-            Expression<Action> expression = () => shimHelperTests.TestGetObjectInstanceFromExpression();
+            // Arrange
+            var shimHelperTests = new ShimHelperTests();
+            Expression<Action> expression = () => shimHelperTests.Can_get_object_instance_from_expression();
+            
+            // Act
             var instance = ShimHelper.GetObjectInstanceOrType((expression.Body as MethodCallExpression).Object);
 
-            Assert.IsNotNull(instance);
-            Assert.AreEqual<Type>(typeof(ShimHelperTests), instance.GetType());
-            Assert.AreSame(shimHelperTests, instance);
-            Assert.AreNotSame(new ShimHelperTests(), instance);
+            // Assert
+            instance.Should().NotBeNull();
+            instance.Should().BeOfType<ShimHelperTests>();
+            instance.Should().BeSameAs(shimHelperTests);
+            instance.Should().NotBeSameAs(new ShimHelperTests());
         }
     }
 }
