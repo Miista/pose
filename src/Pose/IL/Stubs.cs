@@ -139,7 +139,7 @@ namespace Pose.IL
         public static DynamicMethod GenerateStubForVirtualCall(MethodInfo method, TypeInfo constrainedType)
         {
             var thisType = constrainedType.MakeByRefType();
-            var actualMethod = StubHelper.DevirtualizeMethod(constrainedType, method);
+            var actualMethod = StubHelper.DeVirtualizeMethod(constrainedType, method);
 
             var signatureParamTypes = new List<Type>();
             signatureParamTypes.Add(thisType);
@@ -274,7 +274,7 @@ namespace Pose.IL
             // Resolve virtual method to object type
             ilGenerator.Emit(OpCodes.Ldarg_0);
             ilGenerator.Emit(OpCodes.Ldloc_0);
-            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.DevirtualizeMethod), new Type[] { typeof(object), typeof(MethodInfo) }));
+            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.DeVirtualizeMethod), new Type[] { typeof(object), typeof(MethodInfo) }));
             ilGenerator.Emit(OpCodes.Stloc_0);
             
             ilGenerator.Emit(OpCodes.Ldloc_0);
@@ -666,7 +666,7 @@ namespace Pose.IL
             // Resolve virtual method to object type
             ilGenerator.Emit(OpCodes.Ldarg_0);
             ilGenerator.Emit(OpCodes.Ldloc_0);
-            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.DevirtualizeMethod), new Type[] { typeof(object), typeof(MethodInfo) }));
+            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.DeVirtualizeMethod), new Type[] { typeof(object), typeof(MethodInfo) }));
 
             // Rewrite resolved method
             ilGenerator.MarkLabel(rewriteLabel);

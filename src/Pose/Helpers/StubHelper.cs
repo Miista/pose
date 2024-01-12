@@ -11,10 +11,12 @@ namespace Pose.Helpers
     {
         public static IntPtr GetMethodPointer(MethodBase method)
         {
-            if (method is DynamicMethod)
+            if (method is DynamicMethod dynamicMethod)
             {
-                var methodDescriptior = typeof(DynamicMethod).GetMethod("GetMethodDescriptor", BindingFlags.Instance | BindingFlags.NonPublic);
-                return ((RuntimeMethodHandle)methodDescriptior.Invoke(method as DynamicMethod, null)).GetFunctionPointer();
+                var methodDescriptor = typeof(DynamicMethod).GetMethod("GetMethodDescriptor", BindingFlags.Instance | BindingFlags.NonPublic)
+                                        ?? throw new Exception($"Cannot get method GetMethodDescriptor from type {nameof(DynamicMethod)}");
+                
+                return ((RuntimeMethodHandle)methodDescriptor.Invoke(dynamicMethod, null)).GetFunctionPointer();
             }
 
             return method.MethodHandle.GetFunctionPointer();
@@ -44,16 +46,18 @@ namespace Pose.Helpers
         public static int GetIndexOfMatchingShim(MethodBase methodBase, object obj)
             => GetIndexOfMatchingShim(methodBase, methodBase.DeclaringType, obj);
 
-        public static MethodInfo DevirtualizeMethod(object obj, MethodInfo virtualMethod)
+        public static MethodInfo DeVirtualizeMethod(object obj, MethodInfo virtualMethod)
         {
-            return DevirtualizeMethod(obj.GetType(), virtualMethod);
+            return DeVirtualizeMethod(obj.GetType(), virtualMethod);
         }
 
-        public static MethodInfo DevirtualizeMethod(Type thisType, MethodInfo virtualMethod)
+        public static MethodInfo DeVirtualizeMethod(Type thisType, MethodInfo virtualMethod)
         {
             if (thisType == virtualMethod.DeclaringType) return virtualMethod;
+            
             var bindingFlags = BindingFlags.Instance | (virtualMethod.IsPublic ? BindingFlags.Public : BindingFlags.NonPublic);
             var types = virtualMethod.GetParameters().Select(p => p.ParameterType).ToArray();
+            
             return thisType.GetMethod(virtualMethod.Name, bindingFlags, null, types, null);
         }
 
@@ -62,8 +66,8 @@ namespace Pose.Helpers
         public static bool IsIntrinsic(MethodBase method)
         {
             return method.CustomAttributes.Any(ca => ca.AttributeType.FullName == "System.Runtime.CompilerServices.IntrinsicAttribute") ||
-                    method.DeclaringType.CustomAttributes.Any(ca => ca.AttributeType.FullName == "System.Runtime.CompilerServices.IntrinsicAttribute") ||
-                    method.DeclaringType.FullName.StartsWith("System.Runtime.Intrinsics");
+                   method.DeclaringType.CustomAttributes.Any(ca => ca.AttributeType.FullName == "System.Runtime.CompilerServices.IntrinsicAttribute") ||
+                   method.DeclaringType.FullName.StartsWith("System.Runtime.Intrinsics");
         }
 
         public static string CreateStubNameFromMethod(string prefix, MethodBase method)
