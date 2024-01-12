@@ -31,7 +31,7 @@ namespace Pose.Helpers
             if (methodBase.IsStatic || obj == null)
                 return Array.FindIndex(PoseContext.Shims, s => s.Original == methodBase);
 
-            int index = Array.FindIndex(PoseContext.Shims,
+            var index = Array.FindIndex(PoseContext.Shims,
                 s => Object.ReferenceEquals(obj, s.Instance) && s.Original == methodBase);
 
             if (index == -1)
@@ -52,8 +52,8 @@ namespace Pose.Helpers
         public static MethodInfo DevirtualizeMethod(Type thisType, MethodInfo virtualMethod)
         {
             if (thisType == virtualMethod.DeclaringType) return virtualMethod;
-            BindingFlags bindingFlags = BindingFlags.Instance | (virtualMethod.IsPublic ? BindingFlags.Public : BindingFlags.NonPublic);
-            Type[] types = virtualMethod.GetParameters().Select(p => p.ParameterType).ToArray();
+            var bindingFlags = BindingFlags.Instance | (virtualMethod.IsPublic ? BindingFlags.Public : BindingFlags.NonPublic);
+            var types = virtualMethod.GetParameters().Select(p => p.ParameterType).ToArray();
             return thisType.GetMethod(virtualMethod.Name, bindingFlags, null, types, null);
         }
 
@@ -68,7 +68,7 @@ namespace Pose.Helpers
 
         public static string CreateStubNameFromMethod(string prefix, MethodBase method)
         {
-            string name = prefix;
+            var name = prefix;
             name += "_";
             name += method.DeclaringType.ToString();
             name += "_";

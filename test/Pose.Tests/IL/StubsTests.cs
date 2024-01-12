@@ -18,9 +18,9 @@ namespace Pose.Tests
         [TestMethod]
         public void TestGenerateStubForStaticMethod()
         {
-            MethodInfo methodInfo = typeof(Console).GetMethod("WriteLine", new[] { typeof(string) });
-            DynamicMethod dynamicMethod = Stubs.GenerateStubForDirectCall(methodInfo);
-            int count = dynamicMethod.GetParameters().Length;
+            var methodInfo = typeof(Console).GetMethod("WriteLine", new[] { typeof(string) });
+            var dynamicMethod = Stubs.GenerateStubForDirectCall(methodInfo);
+            var count = dynamicMethod.GetParameters().Length;
 
             Assert.AreEqual(methodInfo.GetParameters().Length, dynamicMethod.GetParameters().Length);
             Assert.AreEqual(methodInfo.GetParameters()[0].ParameterType, dynamicMethod.GetParameters()[0].ParameterType);

@@ -64,7 +64,7 @@ namespace Pose
 
         private static Shim ReplaceImpl<T>(Expression<T> expression, bool setter)
         {
-            MethodBase methodBase = ShimHelper.GetMethodFromExpression(expression.Body, setter, out object instance);
+            var methodBase = ShimHelper.GetMethodFromExpression(expression.Body, setter, out var instance);
             return new Shim(methodBase, instance) { _setter = setter };
         }
 

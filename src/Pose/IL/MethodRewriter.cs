@@ -35,10 +35,10 @@ namespace Pose.IL
 
         public MethodBase Rewrite()
         {
-            List<Type> parameterTypes = new List<Type>();
+            var parameterTypes = new List<Type>();
             if (!m_method.IsStatic)
             {
-                Type thisType = m_isInterfaceDispatch ? typeof(object) : m_owningType;
+                var thisType = m_isInterfaceDispatch ? typeof(object) : m_owningType;
                 if (!m_isInterfaceDispatch && m_owningType.IsValueType)
                 {
                     thisType = thisType.MakeByRefType();
@@ -48,9 +48,9 @@ namespace Pose.IL
             }
 
             parameterTypes.AddRange(m_method.GetParameters().Select(p => p.ParameterType));
-            Type returnType = m_method.IsConstructor ? typeof(void) : (m_method as MethodInfo).ReturnType;
+            var returnType = m_method.IsConstructor ? typeof(void) : (m_method as MethodInfo).ReturnType;
 
-            DynamicMethod dynamicMethod = new DynamicMethod(
+            var dynamicMethod = new DynamicMethod(
                 StubHelper.CreateStubNameFromMethod("impl", m_method),
                 returnType,
                 parameterTypes.ToArray(),
@@ -67,7 +67,7 @@ namespace Pose.IL
 
             foreach (var clause in methodBody.ExceptionHandlingClauses)
             {
-                ExceptionHandler handler = new ExceptionHandler();
+                var handler = new ExceptionHandler();
                 handler.Flags = clause.Flags;
                 handler.CatchType = clause.Flags == ExceptionHandlingClauseOptions.Clause ? clause.CatchType : null;
                 handler.TryStart = clause.TryOffset;
@@ -85,16 +85,16 @@ namespace Pose.IL
                 .Where(i => (i.Operand as Instruction) != null)
                 .Select(i => (i.Operand as Instruction));
 
-            foreach (Instruction instruction in ifTargets)
+            foreach (var instruction in ifTargets)
                 targetInstructions.TryAdd(instruction.Offset, ilGenerator.DefineLabel());
 
             var switchTargets = instructions
                 .Where(i => (i.Operand as Instruction[]) != null)
                 .Select(i => (i.Operand as Instruction[]));
 
-            foreach (Instruction[] _instructions in switchTargets)
+            foreach (var _instructions in switchTargets)
             {
-                foreach (Instruction _instruction in _instructions)
+                foreach (var _instruction in _instructions)
                     targetInstructions.TryAdd(_instruction.Offset, ilGenerator.DefineLabel());
             }
 
@@ -110,7 +110,7 @@ namespace Pose.IL
 
                 EmitILForExceptionHandlers(ilGenerator, instruction, handlers);
 
-                if (targetInstructions.TryGetValue(instruction.Offset, out Label label))
+                if (targetInstructions.TryGetValue(instruction.Offset, out var label))
                     ilGenerator.MarkLabel(label);
 
                 if (s_IngoredOpCodes.Contains(instruction.OpCode)) continue;
@@ -268,9 +268,9 @@ namespace Pose.IL
         private void EmitILForInlineBrTarget(ILGenerator ilGenerator,
             Instruction instruction, Dictionary<int, Label> targetInstructions)
         {
-            Label targetLabel = targetInstructions[(instruction.Operand as Instruction).Offset];
+            var targetLabel = targetInstructions[(instruction.Operand as Instruction).Offset];
 
-            OpCode opCode = instruction.OpCode;
+            var opCode = instruction.OpCode;
 
             // Offset values could change and not be short form anymore
             if (opCode == OpCodes.Br_S) opCode = OpCodes.Br;
@@ -298,16 +298,16 @@ namespace Pose.IL
         private void EmitILForInlineSwitch(ILGenerator ilGenerator,
             Instruction instruction, Dictionary<int, Label> targetInstructions)
         {
-            Instruction[] switchInstructions = (Instruction[])instruction.Operand;
-            Label[] targetLabels = new Label[switchInstructions.Length];
-            for (int i = 0; i < switchInstructions.Length; i++)
+            var switchInstructions = (Instruction[])instruction.Operand;
+            var targetLabels = new Label[switchInstructions.Length];
+            for (var i = 0; i < switchInstructions.Length; i++)
                 targetLabels[i] = targetInstructions[switchInstructions[i].Offset];
             ilGenerator.Emit(instruction.OpCode, targetLabels);
         }
 
         private void EmitILForInlineVar(ILGenerator ilGenerator, Instruction instruction)
         {
-            int index = 0;
+            var index = 0;
             if (instruction.OpCode.Name.Contains("loc"))
             {
                 index = ((LocalVariableInfo)instruction.Operand).LocalIndex;
@@ -424,7 +424,7 @@ namespace Pose.IL
 
         private void EmitILForInlineMember(ILGenerator ilGenerator, Instruction instruction)
         {
-            MemberInfo memberInfo = (MemberInfo)instruction.Operand;
+            var memberInfo = (MemberInfo)instruction.Operand;
             if (memberInfo.MemberType == MemberTypes.Field)
             {
                 ilGenerator.Emit(instruction.OpCode, memberInfo as FieldInfo);

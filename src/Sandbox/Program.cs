@@ -9,15 +9,15 @@ namespace Pose.Sandbox
     {
         public static void Main(string[] args)
         {
-            Shim dateTimeShim = Shim.Replace(() => T.I).With(() => "L");
-            Shim dateTimeShim1 = Shim.Replace(() => T.Get()).With(() => "Word");
+            var dateTimeShim = Shim.Replace(() => T.I).With(() => "L");
+            var dateTimeShim1 = Shim.Replace(() => T.Get()).With(() => "Word");
             var inst = new Inst();
-            Func<Inst, string> f = new Func<Inst, string>(i => "Word");
-            Shim dateTimeShim2 = Shim.Replace(() => inst.S).With(f);
-            Shim dateTimeShim3 = Shim.Replace(() => inst.Get()).With(f);
-            Shim dateTimeShim4 = Shim.Replace(() => Is.A<Inst>().S).With(f);
-            Shim dateTimeShim5 = Shim.Replace(() => Is.A<Inst>().Get()).With(f);
-            Shim dateTimeShim6 = Shim.Replace(() => Is.A<Inst>().Get()).With(delegate(Inst @this) { return "Word"; });
+            var f = new Func<Inst, string>(i => "Word");
+            var dateTimeShim2 = Shim.Replace(() => inst.S).With(f);
+            var dateTimeShim3 = Shim.Replace(() => inst.Get()).With(f);
+            var dateTimeShim4 = Shim.Replace(() => Is.A<Inst>().S).With(f);
+            var dateTimeShim5 = Shim.Replace(() => Is.A<Inst>().Get()).With(f);
+            var dateTimeShim6 = Shim.Replace(() => Is.A<Inst>().Get()).With(delegate(Inst @this) { return "Word"; });
             
             PoseContext.Isolate(
                 () =>

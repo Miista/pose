@@ -24,10 +24,10 @@ namespace Pose.IL
 
         public static DynamicMethod GenerateStubForConstructor(ConstructorInfo constructorInfo, OpCode opCode, bool forValueType)
         {
-            ParameterInfo[] parameters = constructorInfo.GetParameters();
+            var parameters = constructorInfo.GetParameters();
 
-            List<Type> signatureParamTypes = new List<Type>();
-            List<Type> parameterTypes = new List<Type>();
+            var signatureParamTypes = new List<Type>();
+            var parameterTypes = new List<Type>();
 
             if (forValueType)
                 signatureParamTypes.Add(constructorInfo.DeclaringType.MakeByRefType());
@@ -43,14 +43,14 @@ namespace Pose.IL
             parameterTypes.Add(typeof(RuntimeMethodHandle));
             parameterTypes.Add(typeof(RuntimeTypeHandle));
 
-            DynamicMethod stub = new DynamicMethod(
+            var stub = new DynamicMethod(
                 string.Format("stub_ctor_{0}_{1}", constructorInfo.DeclaringType, constructorInfo.Name),
                 opCode == OpCodes.Newobj ? constructorInfo.DeclaringType : typeof(void),
                 parameterTypes.ToArray(),
                 StubHelper.GetOwningModule(),
                 true);
 
-            ILGenerator ilGenerator = stub.GetILGenerator();
+            var ilGenerator = stub.GetILGenerator();
 
             ilGenerator.DeclareLocal(constructorInfo.DeclaringType);
             ilGenerator.DeclareLocal(typeof(ConstructorInfo));
@@ -58,8 +58,8 @@ namespace Pose.IL
             ilGenerator.DeclareLocal(typeof(int));
             ilGenerator.DeclareLocal(typeof(IntPtr));
 
-            Label rewriteLabel = ilGenerator.DefineLabel();
-            Label returnLabel = ilGenerator.DefineLabel();
+            var rewriteLabel = ilGenerator.DefineLabel();
+            var returnLabel = ilGenerator.DefineLabel();
 
             ilGenerator.Emit(OpCodes.Ldarg, parameterTypes.Count - 2);
             ilGenerator.Emit(OpCodes.Ldarg, parameterTypes.Count - 1);
@@ -83,7 +83,7 @@ namespace Pose.IL
             ilGenerator.Emit(OpCodes.Stloc, 4);
             ilGenerator.Emit(OpCodes.Ldloc_3);
             ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.GetShimDelegateTarget)));
-            for (int i = 0; i < signatureParamTypes.Count - 1; i++)
+            for (var i = 0; i < signatureParamTypes.Count - 1; i++)
                 ilGenerator.Emit(OpCodes.Ldarg, i);
             ilGenerator.Emit(OpCodes.Ldloc, 4);
             ilGenerator.EmitCalli(OpCodes.Calli, CallingConventions.HasThis, constructorInfo.DeclaringType, signatureParamTypes.Skip(1).ToArray(), null);
@@ -127,7 +127,7 @@ namespace Pose.IL
             ilGenerator.Emit(OpCodes.Castclass, typeof(MethodInfo));
             ilGenerator.Emit(OpCodes.Stloc_2);
             
-            int count = signatureParamTypes.Count;
+            var count = signatureParamTypes.Count;
             if (opCode == OpCodes.Newobj)
             {
                 if (forValueType)
@@ -136,7 +136,7 @@ namespace Pose.IL
                     ilGenerator.Emit(OpCodes.Ldloc_0);
                 count = count - 1;
             }
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
                 ilGenerator.Emit(OpCodes.Ldarg, i);
             
             ilGenerator.Emit(OpCodes.Ldloc_2);
@@ -151,11 +151,11 @@ namespace Pose.IL
         
         public static DynamicMethod GenerateStubForDirectCall(MethodBase method)
         {
-            Type returnType = method.IsConstructor ? typeof(void) : (method as MethodInfo).ReturnType;
-            List<Type> signatureParamTypes = new List<Type>();
+            var returnType = method.IsConstructor ? typeof(void) : (method as MethodInfo).ReturnType;
+            var signatureParamTypes = new List<Type>();
             if (!method.IsStatic)
             {
-                Type thisType = method.DeclaringType;
+                var thisType = method.DeclaringType;
                 if (thisType.IsValueType)
                 {
                     thisType = thisType.MakeByRefType();
@@ -166,7 +166,7 @@ namespace Pose.IL
 
             signatureParamTypes.AddRange(method.GetParameters().Select(p => p.ParameterType));
 
-            DynamicMethod stub = new DynamicMethod(
+            var stub = new DynamicMethod(
                 StubHelper.CreateStubNameFromMethod("stub_call", method),
                 returnType,
                 signatureParamTypes.ToArray(),
@@ -175,13 +175,13 @@ namespace Pose.IL
 
             Console.WriteLine("\n" + method);
             
-            ILGenerator ilGenerator = stub.GetILGenerator();
+            var ilGenerator = stub.GetILGenerator();
 
             if (method.GetMethodBody() == null || StubHelper.IsIntrinsic(method))
             {
                 // Method has no body or is a compiler intrinsic,
                 // simply forward arguments to original or shim
-                for (int i = 0; i < signatureParamTypes.Count; i++)
+                for (var i = 0; i < signatureParamTypes.Count; i++)
                 {
                     ilGenerator.Emit(OpCodes.Ldarg, i);
                 }
@@ -199,8 +199,8 @@ namespace Pose.IL
             ilGenerator.DeclareLocal(typeof(int));
             ilGenerator.DeclareLocal(typeof(IntPtr));
 
-            Label rewriteLabel = ilGenerator.DefineLabel();
-            Label returnLabel = ilGenerator.DefineLabel();
+            var rewriteLabel = ilGenerator.DefineLabel();
+            var returnLabel = ilGenerator.DefineLabel();
 
             // Inject method info into instruction stream
             if (method.IsConstructor)
@@ -229,7 +229,7 @@ namespace Pose.IL
             ilGenerator.Emit(OpCodes.Stloc_2);
             ilGenerator.Emit(OpCodes.Ldloc_1);
             ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.GetShimDelegateTarget)));
-            for (int i = 0; i < signatureParamTypes.Count; i++)
+            for (var i = 0; i < signatureParamTypes.Count; i++)
                 ilGenerator.Emit(OpCodes.Ldarg, i);
             ilGenerator.Emit(OpCodes.Ldloc_2);
             ilGenerator.EmitCalli(OpCodes.Calli, CallingConventions.HasThis, method.IsConstructor ? typeof(void) : (method as MethodInfo).ReturnType, signatureParamTypes.ToArray(), null);
@@ -247,7 +247,7 @@ namespace Pose.IL
             ilGenerator.Emit(OpCodes.Stloc_0);
 
             // Setup stack and make indirect call
-            for (int i = 0; i < signatureParamTypes.Count; i++)
+            for (var i = 0; i < signatureParamTypes.Count; i++)
             {
                 ilGenerator.Emit(OpCodes.Ldarg, i);
             }
@@ -269,27 +269,27 @@ namespace Pose.IL
 
         public static DynamicMethod GenerateStubForVirtualCall(MethodInfo method, TypeInfo constrainedType)
         {
-            Type thisType = constrainedType.MakeByRefType();
-            MethodInfo actualMethod = StubHelper.DevirtualizeMethod(constrainedType, method);
+            var thisType = constrainedType.MakeByRefType();
+            var actualMethod = StubHelper.DevirtualizeMethod(constrainedType, method);
 
-            List<Type> signatureParamTypes = new List<Type>();
+            var signatureParamTypes = new List<Type>();
             signatureParamTypes.Add(thisType);
             signatureParamTypes.AddRange(method.GetParameters().Select(p => p.ParameterType));
 
-            DynamicMethod stub = new DynamicMethod(
+            var stub = new DynamicMethod(
                 StubHelper.CreateStubNameFromMethod("stub_callvirt", method),
                 method.ReturnType,
                 signatureParamTypes.ToArray(),
                 StubHelper.GetOwningModule(),
                 true);
             
-            ILGenerator ilGenerator = stub.GetILGenerator();
+            var ilGenerator = stub.GetILGenerator();
 
             if ((actualMethod.GetMethodBody() == null && !actualMethod.IsAbstract) || StubHelper.IsIntrinsic(actualMethod))
             {
                 // Method has no body or is a compiler intrinsic,
                 // simply forward arguments to original or shim
-                for (int i = 0; i < signatureParamTypes.Count; i++)
+                for (var i = 0; i < signatureParamTypes.Count; i++)
                 {
                     ilGenerator.Emit(OpCodes.Ldarg, i);
                 }
@@ -301,8 +301,8 @@ namespace Pose.IL
 
             ilGenerator.DeclareLocal(typeof(IntPtr));
 
-            Label rewriteLabel = ilGenerator.DefineLabel();
-            Label returnLabel = ilGenerator.DefineLabel();
+            var rewriteLabel = ilGenerator.DefineLabel();
+            var returnLabel = ilGenerator.DefineLabel();
 
             // Inject method info into instruction stream
             ilGenerator.Emit(OpCodes.Ldtoken, actualMethod);
@@ -322,7 +322,7 @@ namespace Pose.IL
             ilGenerator.Emit(OpCodes.Stloc_0);
 
             // Setup stack and make indirect call
-            for (int i = 0; i < signatureParamTypes.Count; i++)
+            for (var i = 0; i < signatureParamTypes.Count; i++)
             {
                 ilGenerator.Emit(OpCodes.Ldarg, i);
                 if (i == 0)
@@ -354,13 +354,13 @@ namespace Pose.IL
 
         public static DynamicMethod GenerateStubForVirtualCall(MethodInfo method)
         {
-            Type thisType = method.DeclaringType.IsInterface ? typeof(object) : method.DeclaringType;
+            var thisType = method.DeclaringType.IsInterface ? typeof(object) : method.DeclaringType;
 
-            List<Type> signatureParamTypes = new List<Type>();
+            var signatureParamTypes = new List<Type>();
             signatureParamTypes.Add(thisType);
             signatureParamTypes.AddRange(method.GetParameters().Select(p => p.ParameterType));
 
-            DynamicMethod stub = new DynamicMethod(
+            var stub = new DynamicMethod(
                 StubHelper.CreateStubNameFromMethod("stub_callvirt", method),
                 method.ReturnType,
                 signatureParamTypes.ToArray(),
@@ -369,13 +369,13 @@ namespace Pose.IL
 
             Console.WriteLine("\n" + method);
 
-            ILGenerator ilGenerator = stub.GetILGenerator();
+            var ilGenerator = stub.GetILGenerator();
 
             if ((method.GetMethodBody() == null && !method.IsAbstract) || StubHelper.IsIntrinsic(method))
             {
                 // Method has no body or is a compiler intrinsic,
                 // simply forward arguments to original or shim
-                for (int i = 0; i < signatureParamTypes.Count; i++)
+                for (var i = 0; i < signatureParamTypes.Count; i++)
                 {
                     ilGenerator.Emit(OpCodes.Ldarg, i);
                 }
@@ -389,8 +389,8 @@ namespace Pose.IL
             ilGenerator.DeclareLocal(typeof(int));
             ilGenerator.DeclareLocal(typeof(IntPtr));
 
-            Label rewriteLabel = ilGenerator.DefineLabel();
-            Label returnLabel = ilGenerator.DefineLabel();
+            var rewriteLabel = ilGenerator.DefineLabel();
+            var returnLabel = ilGenerator.DefineLabel();
 
             // Inject method info into instruction stream
             ilGenerator.Emit(OpCodes.Ldtoken, method);
@@ -421,7 +421,7 @@ namespace Pose.IL
             ilGenerator.Emit(OpCodes.Stloc_2);
             ilGenerator.Emit(OpCodes.Ldloc_1);
             ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod("GetShimDelegateTarget"));
-            for (int i = 0; i < signatureParamTypes.Count; i++)
+            for (var i = 0; i < signatureParamTypes.Count; i++)
                 ilGenerator.Emit(OpCodes.Ldarg, i);
             ilGenerator.Emit(OpCodes.Ldloc_2);
             ilGenerator.EmitCalli(OpCodes.Calli, CallingConventions.HasThis, method.ReturnType, signatureParamTypes.ToArray(), null);
@@ -437,7 +437,7 @@ namespace Pose.IL
             ilGenerator.Emit(OpCodes.Stloc_0);
 
             // Setup stack and make indirect call
-            for (int i = 0; i < signatureParamTypes.Count; i++)
+            for (var i = 0; i < signatureParamTypes.Count; i++)
             {
                 ilGenerator.Emit(OpCodes.Ldarg, i);
             }
@@ -459,30 +459,30 @@ namespace Pose.IL
 
         public static DynamicMethod GenerateStubForObjectInitialization(ConstructorInfo constructor)
         {
-            Type thisType = constructor.DeclaringType;
+            var thisType = constructor.DeclaringType;
             if (thisType.IsValueType)
             {
                 thisType = thisType.MakeByRefType();
             }
 
-            List<Type> signatureParamTypes = new List<Type>();
+            var signatureParamTypes = new List<Type>();
             signatureParamTypes.Add(thisType);
             signatureParamTypes.AddRange(constructor.GetParameters().Select(p => p.ParameterType));
 
-            DynamicMethod stub = new DynamicMethod(
+            var stub = new DynamicMethod(
                 StubHelper.CreateStubNameFromMethod("stub_newobj", constructor),
                 constructor.DeclaringType,
                 signatureParamTypes.Skip(1).ToArray(),
                 StubHelper.GetOwningModule(),
                 true);
             
-            ILGenerator ilGenerator = stub.GetILGenerator();
+            var ilGenerator = stub.GetILGenerator();
 
             if (constructor.GetMethodBody() == null || StubHelper.IsIntrinsic(constructor))
             {
                 // Constructor has no body or is a compiler intrinsic,
                 // simply forward arguments to original or shim
-                for (int i = 0; i < signatureParamTypes.Count - 1; i++)
+                for (var i = 0; i < signatureParamTypes.Count - 1; i++)
                 {
                     ilGenerator.Emit(OpCodes.Ldarg, i);
                 }
@@ -498,8 +498,8 @@ namespace Pose.IL
             ilGenerator.DeclareLocal(typeof(int));
             ilGenerator.DeclareLocal(typeof(MethodInfo));
 
-            Label rewriteLabel = ilGenerator.DefineLabel();
-            Label returnLabel = ilGenerator.DefineLabel();
+            var rewriteLabel = ilGenerator.DefineLabel();
+            var returnLabel = ilGenerator.DefineLabel();
 
             // Inject method info into instruction stream
             ilGenerator.Emit(OpCodes.Ldtoken, constructor);
@@ -525,7 +525,7 @@ namespace Pose.IL
             ilGenerator.Emit(OpCodes.Stloc_0);
             ilGenerator.Emit(OpCodes.Ldloc_3);
             ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.GetShimDelegateTarget)));
-            for (int i = 0; i < signatureParamTypes.Count - 1; i++)
+            for (var i = 0; i < signatureParamTypes.Count - 1; i++)
                 ilGenerator.Emit(OpCodes.Ldarg, i);
             ilGenerator.Emit(OpCodes.Ldloc_0);
             ilGenerator.EmitCalli(OpCodes.Calli, CallingConventions.HasThis, constructor.DeclaringType, signatureParamTypes.Skip(1).ToArray(), null);
@@ -575,7 +575,7 @@ namespace Pose.IL
             }
             
             // Setup stack and make indirect call
-            for (int i = 0; i < signatureParamTypes.Count - 1; i++)
+            for (var i = 0; i < signatureParamTypes.Count - 1; i++)
             {
                 ilGenerator.Emit(OpCodes.Ldarg, i);
             }
@@ -704,14 +704,14 @@ namespace Pose.IL
 
         public static DynamicMethod GenerateStubForDirectLoad(MethodBase method)
         {
-            DynamicMethod stub = new DynamicMethod(
+            var stub = new DynamicMethod(
                 StubHelper.CreateStubNameFromMethod("stub_ldftn", method),
                 typeof(IntPtr),
                 Array.Empty<Type>(),
                 StubHelper.GetOwningModule(),
                 true);
             
-            ILGenerator ilGenerator = stub.GetILGenerator();
+            var ilGenerator = stub.GetILGenerator();
 
             if (method.GetMethodBody() == null || StubHelper.IsIntrinsic(method))
             {
@@ -726,8 +726,8 @@ namespace Pose.IL
                 return stub;
             }
 
-            Label rewriteLabel = ilGenerator.DefineLabel();
-            Label returnLabel = ilGenerator.DefineLabel();
+            var rewriteLabel = ilGenerator.DefineLabel();
+            var returnLabel = ilGenerator.DefineLabel();
 
             // Inject method info into instruction stream
             if (method.IsConstructor)
@@ -755,14 +755,14 @@ namespace Pose.IL
 
         public static DynamicMethod GenerateStubForVirtualLoad(MethodInfo method)
         {
-            DynamicMethod stub = new DynamicMethod(
+            var stub = new DynamicMethod(
                 StubHelper.CreateStubNameFromMethod("stub_ldvirtftn", method),
                 typeof(IntPtr),
                 new Type[] { method.DeclaringType.IsInterface ? typeof(object) : method.DeclaringType },
                 StubHelper.GetOwningModule(),
                 true);
             
-            ILGenerator ilGenerator = stub.GetILGenerator();
+            var ilGenerator = stub.GetILGenerator();
 
             if ((method.GetMethodBody() == null && !method.IsAbstract) || StubHelper.IsIntrinsic(method))
             {
@@ -776,8 +776,8 @@ namespace Pose.IL
 
             ilGenerator.DeclareLocal(typeof(MethodInfo));
 
-            Label rewriteLabel = ilGenerator.DefineLabel();
-            Label returnLabel = ilGenerator.DefineLabel();
+            var rewriteLabel = ilGenerator.DefineLabel();
+            var returnLabel = ilGenerator.DefineLabel();
 
             // Inject method info into instruction stream
             ilGenerator.Emit(OpCodes.Ldtoken, method);

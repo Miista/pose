@@ -8,7 +8,7 @@ namespace Pose.Extensions
         public static byte[] GetILBytes(this ILGenerator ilGenerator)
         {
             var bakeByteArray = typeof(ILGenerator).GetMethod("BakeByteArray", BindingFlags.Instance | BindingFlags.NonPublic);
-            byte[] ilBytes = (byte[])bakeByteArray.Invoke(ilGenerator, null);
+            var ilBytes = (byte[])bakeByteArray.Invoke(ilGenerator, null);
             return ilBytes;
         }
     }

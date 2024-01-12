@@ -17,11 +17,11 @@ namespace Pose.Helpers
             {
                 case ExpressionType.MemberAccess:
                     {
-                        MemberExpression memberExpression = expression as MemberExpression;
-                        MemberInfo memberInfo = memberExpression.Member;
+                        var memberExpression = expression as MemberExpression;
+                        var memberInfo = memberExpression.Member;
                         if (memberInfo.MemberType == MemberTypes.Property)
                         {
-                            PropertyInfo propertyInfo = memberInfo as PropertyInfo;
+                            var propertyInfo = memberInfo as PropertyInfo;
                             instanceOrType = GetObjectInstanceOrType(memberExpression.Expression);
                             return setter ? propertyInfo.GetSetMethod() : propertyInfo.GetGetMethod();
                         }
@@ -29,11 +29,11 @@ namespace Pose.Helpers
                             throw new NotImplementedException("Unsupported expression");
                     }
                 case ExpressionType.Call:
-                    MethodCallExpression methodCallExpression = expression as MethodCallExpression;
+                    var methodCallExpression = expression as MethodCallExpression;
                     instanceOrType = GetObjectInstanceOrType(methodCallExpression.Object);
                     return methodCallExpression.Method;
                 case ExpressionType.New:
-                    NewExpression newExpression = expression as NewExpression;
+                    var newExpression = expression as NewExpression;
                     instanceOrType = null;
                     return newExpression.Constructor;
                 default:
@@ -43,17 +43,17 @@ namespace Pose.Helpers
 
         public static void ValidateReplacementMethodSignature(MethodBase original, MethodInfo replacement, Type type, bool setter)
         {
-            bool isValueType = original.DeclaringType.IsValueType;
-            bool isStatic = original.IsStatic;
-            bool isConstructor = original.IsConstructor;
-            bool isStaticOrConstructor = isStatic || isConstructor;
+            var isValueType = original.DeclaringType.IsValueType;
+            var isStatic = original.IsStatic;
+            var isConstructor = original.IsConstructor;
+            var isStaticOrConstructor = isStatic || isConstructor;
 
-            Type vaildReturnType = isConstructor ? original.DeclaringType : (original as MethodInfo).ReturnType;
+            var vaildReturnType = isConstructor ? original.DeclaringType : (original as MethodInfo).ReturnType;
             vaildReturnType = setter ? typeof(void) : vaildReturnType;
-            Type shimReturnType = replacement.ReturnType;
+            var shimReturnType = replacement.ReturnType;
 
-            Type validOwningType = type;
-            Type shimOwningType = isStaticOrConstructor
+            var validOwningType = type;
+            var shimOwningType = isStaticOrConstructor
                 ? validOwningType : replacement.GetParameters().Select(p => p.ParameterType).FirstOrDefault();
 
             var validParameterTypes = original.GetParameters().Select(p => p.ParameterType);
@@ -76,7 +76,7 @@ namespace Pose.Helpers
             if (validParameterTypes.Count() != shimParameterTypes.Count())
                 throw new InvalidShimSignatureException("Parameters count do not match");
 
-            for (int i = 0; i < validParameterTypes.Count(); i++)
+            for (var i = 0; i < validParameterTypes.Count(); i++)
             {
                 if (validParameterTypes.ElementAt(i) != shimParameterTypes.ElementAt(i))
                     throw new InvalidShimSignatureException($"Parameter types at {i} do not match");
@@ -90,17 +90,17 @@ namespace Pose.Helpers
             {
                 case ExpressionType.MemberAccess:
                     {
-                        MemberExpression memberExpression = expression as MemberExpression;
-                        ConstantExpression constantExpression = memberExpression.Expression as ConstantExpression;
+                        var memberExpression = expression as MemberExpression;
+                        var constantExpression = memberExpression.Expression as ConstantExpression;
                         if (memberExpression.Member.MemberType == MemberTypes.Field)
                         {
-                            FieldInfo fieldInfo = (memberExpression.Member as FieldInfo);
+                            var fieldInfo = (memberExpression.Member as FieldInfo);
                             var obj = fieldInfo.IsStatic ? null : constantExpression.Value;
                             instanceOrType = fieldInfo.GetValue(obj);
                         }
                         else if (memberExpression.Member.MemberType == MemberTypes.Property)
                         {
-                            PropertyInfo propertyInfo = (memberExpression.Member as PropertyInfo);
+                            var propertyInfo = (memberExpression.Member as PropertyInfo);
                             var obj = propertyInfo.GetMethod.IsStatic ? null : constantExpression.Value;
                             instanceOrType = propertyInfo.GetValue(obj);
                         }
@@ -109,8 +109,8 @@ namespace Pose.Helpers
                     }
                 case ExpressionType.Call:
                     {
-                        MethodCallExpression methodCallExpression = expression as MethodCallExpression;
-                        MethodInfo methodInfo = methodCallExpression.Method;
+                        var methodCallExpression = expression as MethodCallExpression;
+                        var methodInfo = methodCallExpression.Method;
                         instanceOrType = methodInfo.GetGenericArguments().FirstOrDefault();
                         break;
                     }

@@ -23,8 +23,8 @@ namespace Pose
             Shims = shims;
             StubCache = new Dictionary<MethodBase, DynamicMethod>();
 
-            Type delegateType = typeof(Action<>).MakeGenericType(entryPoint.Target.GetType());
-            MethodRewriter rewriter = MethodRewriter.CreateRewriter(entryPoint.Method, false);
+            var delegateType = typeof(Action<>).MakeGenericType(entryPoint.Target.GetType());
+            var rewriter = MethodRewriter.CreateRewriter(entryPoint.Method, false);
             Console.WriteLine("----------------------------- Rewriting ----------------------------- ");
             var methodInfo = (MethodInfo)(rewriter.Rewrite());
 
