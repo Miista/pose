@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-#if NETSTANDARD2_1
+#if NETSTANDARD2_1_OR_GREATER
 using System.Runtime.CompilerServices;
 #endif
 using System.Runtime.Serialization;
@@ -548,7 +548,7 @@ namespace Pose.IL
                 ilGenerator.Emit(OpCodes.Ldtoken, constructor.DeclaringType);
                 ilGenerator.Emit(OpCodes.Call, typeof(Type).GetMethod(nameof(Type.GetTypeFromHandle)));
                 
-#if NETSTANDARD2_1
+#if NETSTANDARD2_1_OR_GREATER
                 ilGenerator.Emit(OpCodes.Call, typeof(RuntimeHelpers).GetMethod(nameof(RuntimeHelpers.GetUninitializedObject)));
 #else
                 ilGenerator.Emit(OpCodes.Call, typeof(FormatterServices).GetMethod(nameof(FormatterServices.GetUninitializedObject)));
