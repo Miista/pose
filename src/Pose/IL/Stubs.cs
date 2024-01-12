@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+#if NETSTANDARD2_1
 using System.Runtime.CompilerServices;
+#endif
 using System.Runtime.Serialization;
 using Pose.Extensions;
 using Pose.Helpers;
@@ -545,7 +547,12 @@ namespace Pose.IL
             {
                 ilGenerator.Emit(OpCodes.Ldtoken, constructor.DeclaringType);
                 ilGenerator.Emit(OpCodes.Call, typeof(Type).GetMethod(nameof(Type.GetTypeFromHandle)));
+                
+#if NETSTANDARD2_1
                 ilGenerator.Emit(OpCodes.Call, typeof(RuntimeHelpers).GetMethod(nameof(RuntimeHelpers.GetUninitializedObject)));
+#else
+                ilGenerator.Emit(OpCodes.Call, typeof(FormatterServices).GetMethod(nameof(FormatterServices.GetUninitializedObject)));
+#endif
                 // ilGenerator.Emit(OpCodes.Dup);
                 ilGenerator.Emit(OpCodes.Stloc_1);
             }

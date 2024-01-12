@@ -80,7 +80,11 @@ namespace Pose.Helpers
                 if (genericArguments.Length > 0)
                 {
                     name += "[";
+#if NETSTANDARD2_1
                     name += string.Join(',', genericArguments.Select(g => g.Name));
+#else
+                    name += string.Join(",", genericArguments.Select(g => g.Name));
+#endif
                     name += "]";
                 }
             }
