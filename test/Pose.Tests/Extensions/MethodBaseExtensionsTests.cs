@@ -1,13 +1,23 @@
 using System;
-using System.Reflection;
-
+using FluentAssertions;
 using Pose.Extensions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 
 namespace Pose.Tests
 {
-    [TestClass]
     public class MethodBaseExtensionsTests
     {
+        [Fact]
+        public void InCore_library()
+        {
+            // Arrange
+            var sut = typeof(Exception).GetMethod(nameof(Exception.ToString));
+
+            // Act
+            var result = sut.InCoreLibrary();
+
+            // Assert
+            result.Should().BeTrue(because: $"{nameof(Exception.ToString)} is in the core library");
+        }
     }
 }

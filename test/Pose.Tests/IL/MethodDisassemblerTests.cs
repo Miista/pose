@@ -1,21 +1,23 @@
 using System;
-using System.Linq.Expressions;
-using System.Reflection;
-
+using FluentAssertions;
 using Pose.IL;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 
 namespace Pose.Tests
 {
-    [TestClass]
     public class MethodDisassemblerTests
     {
-        [TestMethod]
-        public void TestGetILInstructions()
+        [Fact]
+        public void Can_get_IL_instructions()
         {
-            MethodDisassembler methodDisassembler
-                = new MethodDisassembler(typeof(Console).GetMethod("Clear"));
-            Assert.AreNotEqual(0, methodDisassembler.GetILInstructions().Count);
+            // Arrange
+            var methodDisassembler = new MethodDisassembler(typeof(Console).GetMethod(nameof(Console.Clear)));
+
+            // Act
+            var instructions = methodDisassembler.GetILInstructions();
+
+            // Assert
+            instructions.Should().NotBeNullOrEmpty();
         }
     }
 }

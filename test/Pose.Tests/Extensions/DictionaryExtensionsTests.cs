@@ -1,19 +1,24 @@
 using System.Collections.Generic;
-
-using Pose.Extensions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using FluentAssertions;
+using Xunit;
 
 namespace Pose.Tests
 {
-    [TestClass]
     public class DictionaryExtensionsTests
     {
-        [TestMethod]
+        [Fact]
         public void TestTryAdd()
         {
-            Dictionary<int, string> dictionary = new Dictionary<int, string>();
-            Assert.AreEqual<bool>(true, dictionary.TryAdd(0, "0"));
-            Assert.AreEqual<bool>(false, dictionary.TryAdd(0, "1"));
+            var dictionary = new Dictionary<int, string>();
+
+            var addZeroResult = dictionary.TryAdd(0, "0");
+            var addZeroAgainResult = dictionary.TryAdd(0, "1");
+
+            addZeroResult.Should().BeTrue();
+            addZeroAgainResult.Should().BeFalse(because: "the key already exists");
+
+            var zeroKey = dictionary[0];
+            zeroKey.Should().Be("0", because: "that is the value for the key");
         }
     }
 }
