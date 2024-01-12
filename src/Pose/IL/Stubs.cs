@@ -476,19 +476,19 @@ namespace Pose.IL
             
             ILGenerator ilGenerator = stub.GetILGenerator();
 
-            // if (constructor.GetMethodBody() == null || StubHelper.IsIntrinsic(constructor))
-            // {
-            //     // Constructor has no body or is a compiler intrinsic,
-            //     // simply forward arguments to original or shim
-            //     for (int i = 0; i < signatureParamTypes.Count - 1; i++)
-            //     {
-            //         ilGenerator.Emit(OpCodes.Ldarg, i);
-            //     }
-            //
-            //     ilGenerator.Emit(OpCodes.Newobj, constructor);
-            //     ilGenerator.Emit(OpCodes.Ret);
-            //     return stub;
-            // }
+            if (constructor.GetMethodBody() == null || StubHelper.IsIntrinsic(constructor))
+            {
+                // Constructor has no body or is a compiler intrinsic,
+                // simply forward arguments to original or shim
+                for (int i = 0; i < signatureParamTypes.Count - 1; i++)
+                {
+                    ilGenerator.Emit(OpCodes.Ldarg, i);
+                }
+            
+                ilGenerator.Emit(OpCodes.Newobj, constructor);
+                ilGenerator.Emit(OpCodes.Ret);
+                return stub;
+            }
 
             ilGenerator.DeclareLocal(typeof(IntPtr));
             ilGenerator.DeclareLocal(constructor.DeclaringType);
