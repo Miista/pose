@@ -1,16 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Reflection.Emit;
 using FluentAssertions;
 using Pose.IL;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Xunit;
-using Assert = Microsoft.VisualStudio.TestTools.UnitTesting.Assert;
 
 namespace Pose.Tests
 {
+    using Assert = Microsoft.VisualStudio.TestTools.UnitTesting.Assert;
+    
     public class MethodRewriterTests
     {
         [Fact]
@@ -25,17 +24,6 @@ namespace Pose.Tests
             var func = dynamicMethod.CreateDelegate(typeof(Func<DateTime>));
 
             // Assert
-            Assert.AreEqual(DateTime.Now.ToString("yyyyMMdd_HHmm"), ((DateTime)func.DynamicInvoke()).ToString("yyyyMMdd_HHmm"));
-        }
-        
-        [TestMethod]
-        public void TestStaticMethodRewrite()
-        {
-            MethodInfo methodInfo = typeof(DateTime).GetMethod("get_Now");
-            MethodRewriter methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
-            DynamicMethod dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
-
-            Delegate func = dynamicMethod.CreateDelegate(typeof(Func<DateTime>));
             Assert.AreEqual(DateTime.Now.ToString("yyyyMMdd_HHmm"), ((DateTime)func.DynamicInvoke()).ToString("yyyyMMdd_HHmm"));
         }
 
