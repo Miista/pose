@@ -23,7 +23,13 @@ namespace Pose.Sandbox
                 {
                     // Console.Write(T.I);
                     // Console.WriteLine(T.Get());
-                    Console.WriteLine(inst.S);
+                    try
+                    {
+                        Console.WriteLine(inst.S);
+                    }
+                    catch (Exception e) { }
+                    finally { }
+
                     // Console.WriteLine(T.I);
                 }, dateTimeShim, dateTimeShim4);
         }

@@ -6,7 +6,7 @@ using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 
 using Mono.Reflection;
-
+using Pose.Exceptions;
 using Pose.Extensions;
 using Pose.Helpers;
 using Pose.IL.DebugHelpers;
@@ -15,21 +15,21 @@ namespace Pose.IL
 {
     internal class MethodRewriter
     {
-        private MethodBase _method;
-        private Type _owningType;
-        private bool _isInterfaceDispatch;
+        private static readonly List<OpCode> IgnoredOpCodes = new List<OpCode> { OpCodes.Endfilter, OpCodes.Endfinally };
         
+        private readonly MethodBase _method;
+        private readonly Type _owningType;
+        private readonly bool _isInterfaceDispatch;
+
         private int _exceptionBlockLevel;
         private TypeInfo _constrainedType;
 
-        public MethodRewriter(MethodBase method, Type owningType, bool isInterfaceDispatch)
+        private MethodRewriter(MethodBase method, Type owningType, bool isInterfaceDispatch)
         {
             _method = method ?? throw new ArgumentNullException(nameof(method));
             _owningType = owningType ?? throw new ArgumentNullException(nameof(owningType));
             _isInterfaceDispatch = isInterfaceDispatch;
         }
-
-        private static List<OpCode> s_IngoredOpCodes = new List<OpCode> { OpCodes.Endfilter, OpCodes.Endfinally };
 
         public static MethodRewriter CreateRewriter(MethodBase method, bool isInterfaceDispatch)
         {
@@ -38,7 +38,6 @@ namespace Pose.IL
                 owningType: method.DeclaringType,
                 isInterfaceDispatch: isInterfaceDispatch
             );
-                // { _method = method, _owningType = method.DeclaringType, _isInterfaceDispatch = isInterfaceDispatch };
         }
 
         public MethodBase Rewrite()
@@ -65,7 +64,7 @@ namespace Pose.IL
                 StubHelper.GetOwningModule(),
                 true);
 
-            var methodBody = _method.GetMethodBody();
+            var methodBody = _method.GetMethodBody() ?? throw new MethodRewriteException($"Method {_method.Name} does not have a body");
             var locals = methodBody.LocalVariables;
             var targetInstructions = new Dictionary<int, Label>();
             var handlers = new List<ExceptionHandler>();
@@ -75,35 +74,45 @@ namespace Pose.IL
 
             foreach (var clause in methodBody.ExceptionHandlingClauses)
             {
-                var handler = new ExceptionHandler();
-                handler.Flags = clause.Flags;
-                handler.CatchType = clause.Flags == ExceptionHandlingClauseOptions.Clause ? clause.CatchType : null;
-                handler.TryStart = clause.TryOffset;
-                handler.TryEnd = clause.TryOffset + clause.TryLength;
-                handler.FilterStart = clause.Flags == ExceptionHandlingClauseOptions.Filter ? clause.FilterOffset : -1;
-                handler.HandlerStart = clause.HandlerOffset;
-                handler.HandlerEnd = clause.HandlerOffset + clause.HandlerLength;
+                var handler = new ExceptionHandler
+                {
+                    Flags = clause.Flags,
+                    CatchType = clause.Flags == ExceptionHandlingClauseOptions.Clause ? clause.CatchType : null,
+                    TryStart = clause.TryOffset,
+                    TryEnd = clause.TryOffset + clause.TryLength,
+                    FilterStart = clause.Flags == ExceptionHandlingClauseOptions.Filter ? clause.FilterOffset : -1,
+                    HandlerStart = clause.HandlerOffset,
+                    HandlerEnd = clause.HandlerOffset + clause.HandlerLength
+                };
                 handlers.Add(handler);
             }
 
             foreach (var local in locals)
+            {
                 ilGenerator.DeclareLocal(local.LocalType, local.IsPinned);
+            }
 
             var ifTargets = instructions
-                .Where(i => (i.Operand as Instruction) != null)
-                .Select(i => (i.Operand as Instruction));
+                .Where(i => i.Operand is Instruction)
+                .Select(i => i.Operand as Instruction);
 
-            foreach (var instruction in ifTargets)
-                targetInstructions.TryAdd(instruction.Offset, ilGenerator.DefineLabel());
+            foreach (var ifInstruction in ifTargets)
+            {
+                if (ifInstruction == null) throw new Exception("The impossible happened");
+                
+                targetInstructions.TryAdd(ifInstruction.Offset, ilGenerator.DefineLabel());
+            }
 
             var switchTargets = instructions
-                .Where(i => (i.Operand as Instruction[]) != null)
-                .Select(i => (i.Operand as Instruction[]));
+                .Where(i => i.Operand is Instruction[])
+                .Select(i => i.Operand as Instruction[]);
 
-            foreach (var _instructions in switchTargets)
+            foreach (var switchInstructions in switchTargets)
             {
-                foreach (var _instruction in _instructions)
-                    targetInstructions.TryAdd(_instruction.Offset, ilGenerator.DefineLabel());
+                if (switchInstructions == null) throw new Exception("The impossible happened");
+                
+                foreach (var instruction in switchInstructions)
+                    targetInstructions.TryAdd(instruction.Offset, ilGenerator.DefineLabel());
             }
 
 #if DEBUG
@@ -121,7 +130,7 @@ namespace Pose.IL
                 if (targetInstructions.TryGetValue(instruction.Offset, out var label))
                     ilGenerator.MarkLabel(label);
 
-                if (s_IngoredOpCodes.Contains(instruction.OpCode)) continue;
+                if (IgnoredOpCodes.Contains(instruction.OpCode)) continue;
 
                 switch (instruction.OpCode.OperandType)
                 {
@@ -181,7 +190,7 @@ namespace Pose.IL
             return dynamicMethod;
         }
 
-        private void EmitILForExceptionHandlers(ILGenerator ilGenerator, Instruction instruction, List<ExceptionHandler> handlers)
+        private void EmitILForExceptionHandlers(ILGenerator ilGenerator, Instruction instruction, IReadOnlyCollection<ExceptionHandler> handlers)
         {
             var tryBlocks = handlers.Where(h => h.TryStart == instruction.Offset).GroupBy(h => h.TryEnd);
             foreach (var tryBlock in tryBlocks)
@@ -238,7 +247,9 @@ namespace Pose.IL
 
         private void EmitThisPointerAccessForBoxedValueType(ILGenerator ilGenerator)
         {
-            ilGenerator.Emit(OpCodes.Call, typeof(Unsafe).GetMethod("Unbox").MakeGenericMethod(_method.DeclaringType));
+            var unboxMethod = typeof(Unsafe).GetMethod(nameof(Unsafe.Unbox)) ?? throw new Exception($"Cannot get method {nameof(Unsafe.Unbox)} from type {nameof(Unsafe)}");
+            
+            ilGenerator.Emit(OpCodes.Call, unboxMethod.MakeGenericMethod(_method.DeclaringType));
         }
 
         private void EmitILForInlineNone(ILGenerator ilGenerator, Instruction instruction)
@@ -273,8 +284,7 @@ namespace Pose.IL
         private void EmitILForInlineString(ILGenerator ilGenerator, Instruction instruction)
             => ilGenerator.Emit(instruction.OpCode, (string)instruction.Operand);
 
-        private void EmitILForInlineBrTarget(ILGenerator ilGenerator,
-            Instruction instruction, Dictionary<int, Label> targetInstructions)
+        private void EmitILForInlineBrTarget(ILGenerator ilGenerator, Instruction instruction, IReadOnlyDictionary<int, Label> targetInstructions)
         {
             var targetLabel = targetInstructions[(instruction.Operand as Instruction).Offset];
 
@@ -348,12 +358,25 @@ namespace Pose.IL
             ilGenerator.Emit(instruction.OpCode, typeInfo);
         }
 
+        private static bool ShouldForward(MethodBase member)
+        {
+            var declaringType = member.DeclaringType ?? throw new Exception($"Type {member.Name} does not have a {nameof(MethodBase.DeclaringType)}");
+
+            // Don't attempt to rewrite inaccessible constructors in System.Private.CoreLib/mscorlib
+            if (!declaringType.IsPublic) return true;
+            if (!member.IsPublic && !member.IsFamily && !member.IsFamilyOrAssembly) return true;
+
+            return false;
+        }
+        
         private void EmitILForConstructor(ILGenerator ilGenerator, Instruction instruction, ConstructorInfo constructorInfo)
         {
             if (constructorInfo.InCoreLibrary())
             {
+                var declaringType = constructorInfo.DeclaringType ?? throw new Exception($"Constructor {constructorInfo.Name} does not have a {nameof(ConstructorInfo.DeclaringType)}");
+                
                 // Don't attempt to rewrite inaccessible constructors in System.Private.CoreLib/mscorlib
-                if (!constructorInfo.DeclaringType.IsPublic) goto forward;
+                if (!declaringType.IsPublic) goto forward;
                 if (!constructorInfo.IsPublic && !constructorInfo.IsFamily && !constructorInfo.IsFamilyOrAssembly) goto forward;
             }
 
@@ -390,7 +413,7 @@ namespace Pose.IL
         {
             if (methodInfo.InCoreLibrary())
             {
-                // Don't attempt to rewrite unaccessible methods in System.Private.CoreLib/mscorlib
+                // Don't attempt to rewrite inaccessible methods in System.Private.CoreLib/mscorlib
                 if (!methodInfo.DeclaringType.IsPublic) goto forward;
                 if (!methodInfo.IsPublic && !methodInfo.IsFamily && !methodInfo.IsFamilyOrAssembly) goto forward;
             }

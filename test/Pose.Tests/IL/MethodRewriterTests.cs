@@ -26,6 +26,21 @@ namespace Pose.Tests
             // Assert
             Assert.AreEqual(DateTime.Now.ToString("yyyyMMdd_HHmm"), ((DateTime)func.DynamicInvoke()).ToString("yyyyMMdd_HHmm"));
         }
+        
+        [Fact]
+        public void Cannot_rewrite_method_in_CoreLib()
+        {
+            // Arrange
+            var methodInfo = typeof(DateTime).GetMethod("get_Now");
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+
+            // Act
+            var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+            var func = dynamicMethod.CreateDelegate(typeof(Func<DateTime>));
+
+            // Assert
+            Assert.AreEqual(DateTime.Now.ToString("yyyyMMdd_HHmm"), ((DateTime)func.DynamicInvoke()).ToString("yyyyMMdd_HHmm"));
+        }
 
         [Fact]
         public void Can_rewrite_instance_method()
@@ -64,6 +79,29 @@ namespace Pose.Tests
             var firstParameter = dynamicMethod.GetParameters().FirstOrDefault();
             firstParameter.Should().NotBeNull();
             firstParameter.ParameterType.Should().Be<List<string>>(because: "that is the first parameter to the constructor");
+        }
+        
+        [Fact]
+        public void Can_rewrite_try_catch_blocks()
+        {
+            var called = false;
+            
+            Action act = () => PoseContext.Isolate(
+                () =>
+                {
+                    try
+                    {
+                        Console.WriteLine("H");
+                        called = true;
+                    }
+                    catch (Exception e)
+                    {
+                        
+                    }
+                });
+
+            act.Should().NotThrow();
+            called.Should().BeTrue();
         }
     }
 }
