@@ -58,6 +58,33 @@ namespace Pose.Tests
             act.Should().Throw<InvalidShimSignatureException>(because: "the signature of the replacement method does not match the original");
             act1.Should().Throw<InvalidShimSignatureException>(because: "the signature of the replacement method does not match the original");
         }
+        
+        [Fact]
+        public void Reports_types_when_throwing_InvalidShimSignatureException()
+        {
+            // Arrange
+            var shimTests = new Instance();
+            
+            // Act
+            Action act = () => Shim.Replace(() => shimTests.GetString()).With(() => { }); // Targets Shim.Replace(Expression<Func<T>>) 
+            Action act1 = () => Shim.Replace(() => Console.WriteLine(Is.A<string>())).With(() => { }); // Targets Shim.Replace(Expression<Action>) 
+            Action act2 = () => Shim.Replace(() => Is.A<DateTime>().Date).With((DateTime @this) => { return new DateTime(2004, 1, 1); }); // Targets Shim.Replace(Expression<Action>) 
+            Action act3 = () => Shim.Replace(() => Is.A<DateTime>().Date).With((ref TimeSpan @this) => { return new DateTime(2004, 1, 1); }); // Targets Shim.Replace(Expression<Action>) 
+            
+            // Assert
+            act.Should()
+                .Throw<InvalidShimSignatureException>(because: "the signature of the replacement method does not match the original")
+                .WithMessage("*Expected System.String* Got System.Void");
+            act1.Should()
+                .Throw<InvalidShimSignatureException>(because: "the signature of the replacement method does not match the original")
+                .WithMessage("*Expected 1. Got 0*");
+            act2.Should()
+                .Throw<InvalidShimSignatureException>(because: "value types must be passed by ref")
+                .WithMessage("*ValueType instances must be passed by ref*");
+            act3.Should()
+                .Throw<InvalidShimSignatureException>(because: "the signature of the replacement method does not match the original")
+                .WithMessage("*Expected System.DateTime* Got System.TimeSpan*");
+        }
 
         [Fact]
         public void TestShimReplaceWith()

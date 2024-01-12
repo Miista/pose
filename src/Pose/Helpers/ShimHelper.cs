@@ -66,7 +66,7 @@ namespace Pose.Helpers
                                         .ToArray();
 
             if (validReturnType != shimReturnType)
-                throw new InvalidShimSignatureException("Mismatched return types");
+                throw new InvalidShimSignatureException($"Mismatched return types. Expected {validReturnType}. Got {shimReturnType}");
 
             if (!isStaticOrConstructor)
             {
@@ -74,11 +74,12 @@ namespace Pose.Helpers
                     throw new InvalidShimSignatureException("ValueType instances must be passed by ref");
             }
 
-            if ((isValueType && !isStaticOrConstructor ? validOwningType.MakeByRefType() : validOwningType) != shimOwningType)
-                throw new InvalidShimSignatureException("Mismatched instance types");
+            var expectedType = (isValueType && !isStaticOrConstructor ? validOwningType.MakeByRefType() : validOwningType);
+            if (expectedType != shimOwningType)
+                throw new InvalidShimSignatureException($"Mismatched instance types. Expected {expectedType.FullName}. Got {shimOwningType.FullName}");
 
             if (validParameterTypes.Length != shimParameterTypes.Length)
-                throw new InvalidShimSignatureException("Parameters count do not match");
+                throw new InvalidShimSignatureException($"Parameters count do not match. Expected {validParameterTypes.Length}. Got {shimParameterTypes.Length}");
 
             for (var i = 0; i < validParameterTypes.Length; i++)
             {
