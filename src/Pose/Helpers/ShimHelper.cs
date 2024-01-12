@@ -24,7 +24,9 @@ namespace Pose.Helpers
                             return setter ? propertyInfo.GetSetMethod() : propertyInfo.GetGetMethod();
                         }
                         else
+                        {
                             throw new NotImplementedException("Unsupported expression");
+                        }
                     }
                 case ExpressionType.Call:
                     var methodCallExpression = expression as MethodCallExpression;
