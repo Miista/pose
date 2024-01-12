@@ -296,5 +296,28 @@ namespace Pose.Tests
             
             Assert.AreEqual(nameof(Instance.Text), dt.Text);
         }
+        
+        [TestMethod]
+        public void Can_invoke_constructor_in_isolation()
+        {
+            try
+            {
+                Instance x = null;
+                PoseContext.Isolate(
+                    () =>
+                    {
+                        x = new Instance();
+                        x.Text = nameof(Instance.Text);
+                    });
+                Assert.IsNotNull(x);
+                Assert.AreEqual(nameof(Instance.Text), x.Text);
+            }
+            catch (Exception e)
+            {
+                throw;
+            }
+         
+            Assert.IsTrue(true);
+        }
     }
 }
