@@ -6,12 +6,12 @@ using FluentAssertions;
 using Pose.Exceptions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Xunit;
-using Assert = Microsoft.VisualStudio.TestTools.UnitTesting.Assert;
+
 // ReSharper disable RedundantLambdaParameterType
+// ReSharper disable PossibleNullReferenceException
 
 namespace Pose.Tests
 {
-    [TestClass]
     public class ShimTests
     {
         [Fact]
@@ -109,70 +109,85 @@ namespace Pose.Tests
             shim1.Replacement.Should().BeSameAs(actionInstance, because: "that is the shim's replacement");
         }
 
-        [TestMethod]
+        [Fact]
         public void TestReplacePropertyGetter()
         {
             var shim = Shim.Replace(() => Thread.CurrentThread.CurrentCulture);
 
-            Assert.AreEqual(typeof(Thread).GetProperty(nameof(Thread.CurrentCulture), typeof(CultureInfo)).GetMethod, shim.Original);
-            Assert.IsNull(shim.Replacement);
+            var currentCultureGetMethod = typeof(Thread).GetProperty(nameof(Thread.CurrentCulture), typeof(CultureInfo)).GetMethod;
+            shim.Original.Should().BeEquivalentTo(currentCultureGetMethod, because: "the shim configures that method");
+            shim.Replacement.Should().BeNull(because: "no replacement is configured");
         }
 
-        [TestMethod]
+        [Fact]
         public void TestReplacePropertySetter()
         {
+            // Arrange
             var shim = Shim.Replace(() => Is.A<Thread>().CurrentCulture, true);
 
-            Assert.AreEqual(typeof(Thread).GetProperty(nameof(Thread.CurrentCulture), typeof(CultureInfo)).SetMethod, shim.Original);
-            Assert.IsNull(shim.Replacement);
+            var currentCultureSetMethod = typeof(Thread).GetProperty(nameof(Thread.CurrentCulture), typeof(CultureInfo)).SetMethod;
+            shim.Original.Should().BeEquivalentTo(currentCultureSetMethod, because: "the shim configures that method");
+            shim.Replacement.Should().BeNull(because: "no replacement is configured");
         }
         
         
-        [TestMethod]
-        [Ignore]
+        [Fact]
         public void TestReplacePropertySetterAction()
         {
+            // Arrange
             var getterExecuted = false;
-            var getterShim = Shim.Replace(() => Is.A<Thread>().CurrentCulture)
+            var getterShim = Shim
+                .Replace(() => Is.A<Thread>().CurrentCulture)
                 .With((Thread t) =>
                 {
                     getterExecuted = true;
                     return t.CurrentCulture;
                 });
+            
             var setterExecuted = false;
-            var setterShim = Shim.Replace(() => Is.A<Thread>().CurrentCulture, true)
+            var setterShim = Shim
+                .Replace(() => Is.A<Thread>().CurrentCulture, true)
                 .With((Thread t, CultureInfo value) =>
                 {
                     setterExecuted = true;
                     t.CurrentCulture = value;
                 });
 
+            // Pre-Act asserts
             var currentCultureProperty = typeof(Thread).GetProperty(nameof(Thread.CurrentCulture), typeof(CultureInfo));
-            Assert.AreEqual(currentCultureProperty.GetMethod, getterShim.Original);
-            Assert.AreEqual(currentCultureProperty.SetMethod, setterShim.Original);
+            getterShim.Original.Should().BeEquivalentTo(currentCultureProperty.GetMethod, because: "the shim configures that method");
+            setterShim.Original.Should().BeEquivalentTo(currentCultureProperty.SetMethod, because: "the shim configures that method");
 
+            // Act
             PoseContext.Isolate(() =>
             {
                 var oldCulture = Thread.CurrentThread.CurrentCulture;
                 Thread.CurrentThread.CurrentCulture = oldCulture;
             }, getterShim, setterShim);
 
-            Assert.IsTrue(getterExecuted, "Getter not executed");
-            Assert.IsTrue(setterExecuted, "Setter not executed");
+            // Assert
+            getterExecuted.Should().BeTrue(because: "the shim was executed");
+            setterExecuted.Should().BeTrue(because: "the shim was executed");
         }
         
         [TestMethod]
         public void Can_shim_static_property()
         {
+            // Arrange
             var action = new Func<DateTime>(() => new DateTime(2004, 1, 1));
-            var shim = Shim.Replace(() => DateTime.Now).With(action);
+            var shim = Shim
+                .Replace(() => DateTime.Now)
+                .With(action);
 
+            // Act
             DateTime dt = default;
-            PoseContext.Isolate(() => { dt = DateTime.Now; }, shim);
+            PoseContext.Isolate(
+                () => { dt = DateTime.Now; },
+                shim
+            );
             
-            Assert.AreEqual(2004, dt.Year);
-            Assert.AreEqual(1, dt.Day);
-            Assert.AreEqual(1, dt.Month);
+            // Assert
+            dt.Should().BeCloseTo(new DateTime(2004, 1, 1), TimeSpan.Zero, because: "that is what the shim returns");
         }
 
         private class Instance
@@ -205,59 +220,73 @@ namespace Pose.Tests
         [TestMethod]
         public void Can_shim_instance_property_getter()
         {
+            // Arrange
             var instance = new Instance();
             var action = new Func<Instance, string>((Instance @this) => "Hello");
             var shim = Shim.Replace(() => instance.Text).With(action);
 
+            // Act
             string dt = default;
             PoseContext.Isolate(() => { dt = instance.Text; }, shim);
             
-            Assert.AreEqual("Hello", dt);
+            // Assert
+            dt.Should().BeEquivalentTo("Hello", because: "that is what the shim is configured to return");
         }
         
         [TestMethod]
         public void Can_shim_instance_property_setter()
         {
+            // Arrange
             var instance = new Instance();
             var wasCalled = false;
             var action = new Action<Instance, string>((Instance @this, string prop) => { wasCalled = true; });
+            
+            // Act
             var shim = Shim.Replace(() => Is.A<Instance>().Text, true).With(action);
 
-            Assert.IsFalse(wasCalled);
+            // Assert
+            wasCalled.Should().BeFalse(because: "the shim has not been called yet");
             PoseContext.Isolate(() => { instance.Text = "Hello"; }, shim);
-            Assert.IsTrue(wasCalled);
+            wasCalled.Should().BeTrue(because: "the shim has been called");
         }
         
         [TestMethod]
         public void Can_shim_static_property_getter()
         {
+            // Arrange
             var action = new Func<string>(() => "Hello");
             var shim = Shim.Replace(() => Instance.StaticString).With(action);
 
+            // Act
             string dt = default;
             PoseContext.Isolate(() => { dt = Instance.StaticString; }, shim);
             
-            Assert.AreEqual("Hello", dt);
+            // Assert
+            dt.Should().BeEquivalentTo("Hello", because: "that is what the shim is configured to return");
         }
 
         [TestMethod]
         public void Can_shim_static_property_setter()
         {
+            // Arrange
             var wasCalled = false;
             var action = new Action<string>(prop => { wasCalled = true; });
             var shim = Shim.Replace(() => Instance.StaticString, true).With(action);
 
-            Assert.IsFalse(wasCalled);
+            // Act + Assert
+            wasCalled.Should().BeFalse(because: "the shim has not been called yet");
             PoseContext.Isolate(() => { Instance.StaticString = "Hello"; }, shim);
-            Assert.IsTrue(wasCalled);
+            wasCalled.Should().BeTrue(because: "the shim has been called");
         }
         
         [TestMethod]
         public void Can_shim_instance_method()
         {
+            // Arrange
             var action = new Func<Instance, string>((Instance @this) => "String");
             var shim = Shim.Replace(() => Is.A<Instance>().GetString()).With(action);
 
+            // Act
             string dt = default;
             PoseContext.Isolate(
                 () =>
@@ -266,105 +295,129 @@ namespace Pose.Tests
                     dt = instance.GetString();
                 }, shim);
             
-            Assert.AreEqual("String", dt);
+            // Assert
+            dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
         }
         
         [TestMethod]
         public void Can_shim_instance_method_of_value_type()
         {
-            var shim = Shim.Replace(() => Is.A<InstanceValue>().GetString()).With(
-                delegate(ref InstanceValue @this) { return "String"; });
+            // Arrange
+            var shim = Shim
+                .Replace(() => Is.A<InstanceValue>().GetString())
+                .With(delegate(ref InstanceValue @this) { return "String"; });
 
+            // Act
             string dt = default;
             PoseContext.Isolate(
-                () =>
-                {
-                    var instance = new InstanceValue();
-                    dt = instance.GetString();
-                }, shim);
+                () => { dt = new InstanceValue().GetString(); },
+                shim
+            );
             
-            Assert.AreEqual("String", dt);
+            // Assert
+            dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
         }
         
         [TestMethod]
         public void Can_shim_instance_method_of_specific_instance()
         {
+            // Arrange
             var instance = new Instance();
             var action = new Func<Instance, string>((Instance @this) => "String");
             var shim = Shim.Replace(() => instance.GetString()).With(action);
 
+            // Act
             string dt = default;
-            PoseContext.Isolate(() => { dt = instance.GetString(); }, shim);
+            PoseContext.Isolate(
+                () => { dt = instance.GetString(); },
+                shim
+            );
             
-            Assert.AreEqual("String", dt);
+            // Assert
+            dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
         }
                 
         [TestMethod]
-        public void Can_shim_instance_method_of_specific_instance_1()
+        public void Shims_only_the_method_of_the_specified_instance()
         {
-            var instance = new Instance();
+            // Arrange
+            var shimmedInstance = new Instance();
             var action = new Func<Instance, string>((Instance @this) => "String");
-            var shim = Shim.Replace(() => instance.GetString()).With(action);
+            var shim = Shim.Replace(() => shimmedInstance.GetString()).With(action);
 
-            string dt1 = default;
-            string dt2 = default;
+            // Act
+            string responseFromShimmedInstance = default;
+            string responseFromNonShimmedInstance = default;
             PoseContext.Isolate(
                 () =>
                 {
-                    dt1 = instance.GetString();
-                    var instance2 = new Instance();
-                    dt2 = instance2.GetString();
+                    responseFromShimmedInstance = shimmedInstance.GetString();
+                    var nonShimmedInstance = new Instance();
+                    responseFromNonShimmedInstance = nonShimmedInstance.GetString();
                 }, shim);
             
-            Assert.AreEqual("String", dt1);
-            Assert.AreEqual("!", dt2);
+            // Assert
+            responseFromShimmedInstance.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
+            responseFromNonShimmedInstance.Should().NotBeEquivalentTo("String", because: "the shim is configured for a specific instance");
+            responseFromNonShimmedInstance.Should().BeEquivalentTo("!", because: "that is what the instance returns by default");
         }
         
         [TestMethod]
         public void Can_shim_static_method()
         {
+            // Arrange
             var action = new Func<string>(() => "String");
             var shim = Shim.Replace(() => Instance.StaticMethod()).With(action);
 
+            // Act
             string dt = default;
-            PoseContext.Isolate(() => { dt = Instance.StaticMethod(); }, shim);
+            PoseContext.Isolate(
+                () => { dt = Instance.StaticMethod(); },
+                shim
+            );
             
-            Assert.AreEqual("String", dt);
+            // Assert
+            dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
         }
         
         [TestMethod]
         public void Can_shim_constructor()
         {
+            // Arrange
             var action = new Func<Instance>(() => new Instance(){Text = nameof(Instance.Text)});
-            var shim = Shim.Replace(() => new Instance()).With(action);
+            var shim = Shim
+                .Replace(() => new Instance())
+                .With(action);
 
+            // Act
             Instance dt = default;
-            PoseContext.Isolate(() => { dt = new Instance(); }, shim);
+            PoseContext.Isolate(
+                () => { dt = new Instance(); },
+                shim
+            );
             
-            Assert.AreEqual(nameof(Instance.Text), dt.Text);
+            // Assert
+            dt.Text.Should().BeEquivalentTo(nameof(Instance.Text), because: "that is what the shim is configured to return");
         }
-        
-        [TestMethod]
+
+        [Fact]
         public void Can_invoke_constructor_in_isolation()
         {
-            try
-            {
-                Instance x = null;
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        x = new Instance();
-                        x.Text = nameof(Instance.Text);
-                    });
-                Assert.IsNotNull(x);
-                Assert.AreEqual(nameof(Instance.Text), x.Text);
-            }
-            catch (Exception e)
-            {
-                throw;
-            }
-         
-            Assert.IsTrue(true);
+            // Arrange
+            Instance x = null;
+            Action act = () => PoseContext.Isolate(
+                () =>
+                {
+                    x = new Instance(); // Specifically this line should *not* fail!
+                    x.Text = nameof(Instance.Text);
+                }
+            );
+            
+            // Act + Assert
+            act.Should().NotThrow(because: "the constructor can be invoked in isolation");
+            x.Should().NotBeNull(because: "the instance has been initialized in isolation");
+            x.Text.Should().BeEquivalentTo(nameof(Instance.Text), because: "the property was set in isolation");
+
         }
     }
 }
