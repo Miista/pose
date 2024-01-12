@@ -42,7 +42,7 @@ namespace Pose.IL.DebugHelpers
 
             if (handle is RuntimeTypeHandle typeHandle)
             {
-                return TypeInfo.GetTypeFromHandle(typeHandle).GetTypeInfo();
+                return Type.GetTypeFromHandle(typeHandle).GetTypeInfo();
             }
 
             if (handle is RuntimeMethodHandle methodHandle)
