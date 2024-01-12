@@ -16,7 +16,6 @@ namespace Pose.IL
             _method = method ?? throw new ArgumentNullException(nameof(method));
         }
 
-        // ReSharper disable once InconsistentNaming
         public IEnumerable<Instruction> GetILInstructions()
         {
             return _method.GetInstructions().ToList();

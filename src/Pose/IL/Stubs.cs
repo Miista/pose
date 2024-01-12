@@ -5,157 +5,26 @@ using System.Reflection;
 using System.Reflection.Emit;
 #if NETSTANDARD2_1_OR_GREATER
 using System.Runtime.CompilerServices;
-#endif
+#else
 using System.Runtime.Serialization;
+#endif
 using Pose.Extensions;
 using Pose.Helpers;
+
+// ReSharper disable RedundantExplicitArrayCreation
 
 namespace Pose.IL
 {
     internal static class Stubs
     {
-        private static MethodInfo s_devirtualizeMethodMethod;
-
-        static Stubs()
-        {
-            s_devirtualizeMethodMethod = typeof(StubHelper).GetMethod(nameof(StubHelper.DevirtualizeMethod), new Type[] { typeof(object), typeof(MethodInfo) });
-            typeof(Type).GetMethod(nameof(Type.GetTypeFromHandle));
-        }
-
-        public static DynamicMethod GenerateStubForConstructor(ConstructorInfo constructorInfo, OpCode opCode, bool forValueType)
-        {
-            var parameters = constructorInfo.GetParameters();
-
-            var signatureParamTypes = new List<Type>();
-            var parameterTypes = new List<Type>();
-
-            if (forValueType)
-                signatureParamTypes.Add(constructorInfo.DeclaringType.MakeByRefType());
-            else
-                signatureParamTypes.Add(constructorInfo.DeclaringType);
-
-            signatureParamTypes.AddRange(parameters.Select(p => p.ParameterType));
-
-            if (opCode == OpCodes.Newobj)
-                parameterTypes.AddRange(parameters.Select(p => p.ParameterType));
-            else
-                parameterTypes.AddRange(signatureParamTypes);
-            parameterTypes.Add(typeof(RuntimeMethodHandle));
-            parameterTypes.Add(typeof(RuntimeTypeHandle));
-
-            var stub = new DynamicMethod(
-                string.Format("stub_ctor_{0}_{1}", constructorInfo.DeclaringType, constructorInfo.Name),
-                opCode == OpCodes.Newobj ? constructorInfo.DeclaringType : typeof(void),
-                parameterTypes.ToArray(),
-                StubHelper.GetOwningModule(),
-                true);
-
-            var ilGenerator = stub.GetILGenerator();
-
-            ilGenerator.DeclareLocal(constructorInfo.DeclaringType);
-            ilGenerator.DeclareLocal(typeof(ConstructorInfo));
-            ilGenerator.DeclareLocal(typeof(MethodInfo));
-            ilGenerator.DeclareLocal(typeof(int));
-            ilGenerator.DeclareLocal(typeof(IntPtr));
-
-            var rewriteLabel = ilGenerator.DefineLabel();
-            var returnLabel = ilGenerator.DefineLabel();
-
-            ilGenerator.Emit(OpCodes.Ldarg, parameterTypes.Count - 2);
-            ilGenerator.Emit(OpCodes.Ldarg, parameterTypes.Count - 1);
-            ilGenerator.Emit(OpCodes.Call, typeof(MethodBase).GetMethod(nameof(MethodBase.GetMethodFromHandle), new Type[] { typeof(RuntimeMethodHandle), typeof(RuntimeTypeHandle) }));
-            ilGenerator.Emit(OpCodes.Castclass, typeof(ConstructorInfo));
-            ilGenerator.Emit(OpCodes.Stloc_1);
-
-            ilGenerator.Emit(OpCodes.Ldloc_1);
-            ilGenerator.Emit(OpCodes.Ldnull);
-            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.GetIndexOfMatchingShim), new []{typeof(MethodBase), typeof(object)}));
-            ilGenerator.Emit(OpCodes.Stloc_3);
-            ilGenerator.Emit(OpCodes.Ldloc_3);
-            ilGenerator.Emit(OpCodes.Ldc_I4_M1);
-            ilGenerator.Emit(OpCodes.Ceq);
-            ilGenerator.Emit(OpCodes.Brtrue_S, rewriteLabel);
-            ilGenerator.Emit(OpCodes.Ldloc_3);
-            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.GetShimReplacementMethod)));
-            ilGenerator.Emit(OpCodes.Stloc_2);
-            ilGenerator.Emit(OpCodes.Ldloc_2);
-            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.GetMethodPointer)));
-            ilGenerator.Emit(OpCodes.Stloc, 4);
-            ilGenerator.Emit(OpCodes.Ldloc_3);
-            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.GetShimDelegateTarget)));
-            for (var i = 0; i < signatureParamTypes.Count - 1; i++)
-                ilGenerator.Emit(OpCodes.Ldarg, i);
-            ilGenerator.Emit(OpCodes.Ldloc, 4);
-            ilGenerator.EmitCalli(OpCodes.Calli, CallingConventions.HasThis, constructorInfo.DeclaringType, signatureParamTypes.Skip(1).ToArray(), null);
-            ilGenerator.Emit(OpCodes.Stloc_0);
-            if (opCode == OpCodes.Call)
-            {
-                if (forValueType)
-                {
-                    ilGenerator.Emit(OpCodes.Ldarg_0);
-                    ilGenerator.Emit(OpCodes.Ldloc_0);
-                    ilGenerator.Emit(OpCodes.Stobj, constructorInfo.DeclaringType);
-                }
-                else
-                {
-                    ilGenerator.Emit(OpCodes.Ldloc_0);
-                    ilGenerator.Emit(OpCodes.Starg, 0);
-                }
-            }
-            ilGenerator.Emit(OpCodes.Br_S, returnLabel);
-
-            ilGenerator.MarkLabel(rewriteLabel);
-            if (opCode == OpCodes.Newobj)
-            {
-                if (forValueType)
-                {
-                    ilGenerator.Emit(OpCodes.Ldloca, 0);
-                    ilGenerator.Emit(OpCodes.Initobj, constructorInfo.DeclaringType);
-                }
-                else
-                {
-                    ilGenerator.Emit(OpCodes.Ldarg, parameterTypes.Count - 1);
-                    ilGenerator.Emit(OpCodes.Call, typeof(Type).GetMethod("GetTypeFromHandle"));
-                    ilGenerator.Emit(OpCodes.Call, typeof(FormatterServices).GetMethod("GetUninitializedObject"));
-                    ilGenerator.Emit(OpCodes.Stloc_0);
-                }
-            }
-
-            ilGenerator.Emit(OpCodes.Ldloc_1);
-            ilGenerator.Emit(OpCodes.Call, typeof(MethodRewriter).GetMethod(nameof(MethodRewriter.CreateRewriter), new Type[] { typeof(MethodBase), typeof(bool) }));
-            ilGenerator.Emit(OpCodes.Call, typeof(MethodRewriter).GetMethod(nameof(MethodRewriter.Rewrite)));
-            ilGenerator.Emit(OpCodes.Castclass, typeof(MethodInfo));
-            ilGenerator.Emit(OpCodes.Stloc_2);
-            
-            var count = signatureParamTypes.Count;
-            if (opCode == OpCodes.Newobj)
-            {
-                if (forValueType)
-                    ilGenerator.Emit(OpCodes.Ldloca, 0);
-                else
-                    ilGenerator.Emit(OpCodes.Ldloc_0);
-                count = count - 1;
-            }
-            for (var i = 0; i < count; i++)
-                ilGenerator.Emit(OpCodes.Ldarg, i);
-            
-            ilGenerator.Emit(OpCodes.Ldloc_2);
-            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.GetMethodPointer)));
-            ilGenerator.EmitCalli(OpCodes.Calli, CallingConventions.Standard, typeof(void), signatureParamTypes.ToArray(), null);
-            ilGenerator.MarkLabel(returnLabel);
-            if (opCode == OpCodes.Newobj)
-                ilGenerator.Emit(OpCodes.Ldloc_0);
-            ilGenerator.Emit(OpCodes.Ret);
-            return stub;
-        }
-        
         public static DynamicMethod GenerateStubForDirectCall(MethodBase method)
         {
             var returnType = method.IsConstructor ? typeof(void) : (method as MethodInfo).ReturnType;
             var signatureParamTypes = new List<Type>();
+            
             if (!method.IsStatic)
             {
-                var thisType = method.DeclaringType;
+                var thisType = method.DeclaringType ?? throw new Exception($"Method {method.Name} does not have a {nameof(MethodBase.DeclaringType)}");
                 if (thisType.IsValueType)
                 {
                     thisType = thisType.MakeByRefType();
@@ -354,7 +223,10 @@ namespace Pose.IL
 
         public static DynamicMethod GenerateStubForVirtualCall(MethodInfo method)
         {
-            var thisType = method.DeclaringType.IsInterface ? typeof(object) : method.DeclaringType;
+            if (method == null) throw new ArgumentNullException(nameof(method));
+            
+            var declaringType = method.DeclaringType ?? throw new Exception($"Method {method.Name} does not have a {nameof(MethodBase.DeclaringType)}");
+            var thisType = declaringType.IsInterface ? typeof(object) : declaringType;
 
             var signatureParamTypes = new List<Type>();
             signatureParamTypes.Add(thisType);
@@ -394,7 +266,7 @@ namespace Pose.IL
 
             // Inject method info into instruction stream
             ilGenerator.Emit(OpCodes.Ldtoken, method);
-            ilGenerator.Emit(OpCodes.Ldtoken, method.DeclaringType);
+            ilGenerator.Emit(OpCodes.Ldtoken, declaringType);
             ilGenerator.Emit(OpCodes.Call, typeof(MethodBase).GetMethod(nameof(MethodBase.GetMethodFromHandle), new Type[] { typeof(RuntimeMethodHandle), typeof(RuntimeTypeHandle) }));
             ilGenerator.Emit(OpCodes.Castclass, typeof(MethodInfo));
             ilGenerator.Emit(OpCodes.Stloc_0);
@@ -430,7 +302,7 @@ namespace Pose.IL
             // Rewrite resolved method
             ilGenerator.MarkLabel(rewriteLabel);
             ilGenerator.Emit(OpCodes.Ldloc_0);
-            ilGenerator.Emit(method.DeclaringType.IsInterface ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
+            ilGenerator.Emit(declaringType.IsInterface ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
             ilGenerator.Emit(OpCodes.Call, typeof(MethodRewriter).GetMethod(nameof(MethodRewriter.CreateRewriter), new Type[] { typeof(MethodBase), typeof(bool) }));
             ilGenerator.Emit(OpCodes.Call, typeof(MethodRewriter).GetMethod(nameof(MethodRewriter.Rewrite)));
             ilGenerator.Emit(OpCodes.Castclass, typeof(MethodInfo));
@@ -459,7 +331,8 @@ namespace Pose.IL
 
         public static DynamicMethod GenerateStubForObjectInitialization(ConstructorInfo constructor)
         {
-            var thisType = constructor.DeclaringType;
+            var thisType = constructor.DeclaringType ?? throw new Exception($"Method {constructor.Name} does not have a {nameof(MethodBase.DeclaringType)}");
+            
             if (thisType.IsValueType)
             {
                 thisType = thisType.MakeByRefType();
@@ -537,7 +410,7 @@ namespace Pose.IL
             ilGenerator.MarkLabel(rewriteLabel);
             
             // ++
-            if (constructor.DeclaringType.IsValueType)
+            if (thisType.IsValueType)
             {
                 ilGenerator.Emit(OpCodes.Ldloca_S, (byte)1);
                 // ilGenerator.Emit(OpCodes.Dup);
@@ -755,10 +628,14 @@ namespace Pose.IL
 
         public static DynamicMethod GenerateStubForVirtualLoad(MethodInfo method)
         {
+            if (method == null) throw new ArgumentNullException(nameof(method));
+
+            var declaringType = method.DeclaringType ?? throw new Exception($"Method {method.Name} does not have a {nameof(MethodBase.DeclaringType)}");
+            
             var stub = new DynamicMethod(
                 StubHelper.CreateStubNameFromMethod("stub_ldvirtftn", method),
                 typeof(IntPtr),
-                new Type[] { method.DeclaringType.IsInterface ? typeof(object) : method.DeclaringType },
+                new Type[] { declaringType.IsInterface ? typeof(object) : declaringType },
                 StubHelper.GetOwningModule(),
                 true);
             
@@ -781,7 +658,7 @@ namespace Pose.IL
 
             // Inject method info into instruction stream
             ilGenerator.Emit(OpCodes.Ldtoken, method);
-            ilGenerator.Emit(OpCodes.Ldtoken, method.DeclaringType);
+            ilGenerator.Emit(OpCodes.Ldtoken, declaringType);
             ilGenerator.Emit(OpCodes.Call, typeof(MethodBase).GetMethod(nameof(MethodBase.GetMethodFromHandle), new Type[] { typeof(RuntimeMethodHandle), typeof(RuntimeTypeHandle) }));
             ilGenerator.Emit(OpCodes.Castclass, typeof(MethodInfo));
             ilGenerator.Emit(OpCodes.Stloc_0);
@@ -789,11 +666,11 @@ namespace Pose.IL
             // Resolve virtual method to object type
             ilGenerator.Emit(OpCodes.Ldarg_0);
             ilGenerator.Emit(OpCodes.Ldloc_0);
-            ilGenerator.Emit(OpCodes.Call, s_devirtualizeMethodMethod);
+            ilGenerator.Emit(OpCodes.Call, typeof(StubHelper).GetMethod(nameof(StubHelper.DevirtualizeMethod), new Type[] { typeof(object), typeof(MethodInfo) }));
 
             // Rewrite resolved method
             ilGenerator.MarkLabel(rewriteLabel);
-            ilGenerator.Emit(method.DeclaringType.IsInterface ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
+            ilGenerator.Emit(declaringType.IsInterface ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
             ilGenerator.Emit(OpCodes.Call, typeof(MethodRewriter).GetMethod(nameof(MethodRewriter.CreateRewriter), new Type[] { typeof(MethodBase), typeof(bool) }));
             ilGenerator.Emit(OpCodes.Call, typeof(MethodRewriter).GetMethod(nameof(MethodRewriter.Rewrite)));
 

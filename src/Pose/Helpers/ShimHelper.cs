@@ -77,10 +77,10 @@ namespace Pose.Helpers
             if ((isValueType && !isStaticOrConstructor ? validOwningType.MakeByRefType() : validOwningType) != shimOwningType)
                 throw new InvalidShimSignatureException("Mismatched instance types");
 
-            if (validParameterTypes.Count() != shimParameterTypes.Count())
+            if (validParameterTypes.Length != shimParameterTypes.Length)
                 throw new InvalidShimSignatureException("Parameters count do not match");
 
-            for (var i = 0; i < validParameterTypes.Count(); i++)
+            for (var i = 0; i < validParameterTypes.Length; i++)
             {
                 if (validParameterTypes.ElementAt(i) != shimParameterTypes.ElementAt(i))
                     throw new InvalidShimSignatureException($"Parameter types at {i} do not match");
