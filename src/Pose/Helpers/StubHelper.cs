@@ -65,9 +65,15 @@ namespace Pose.Helpers
 
         public static bool IsIntrinsic(MethodBase method)
         {
-            return method.CustomAttributes.Any(ca => ca.AttributeType.FullName == "System.Runtime.CompilerServices.IntrinsicAttribute") ||
-                   method.DeclaringType.CustomAttributes.Any(ca => ca.AttributeType.FullName == "System.Runtime.CompilerServices.IntrinsicAttribute") ||
-                   method.DeclaringType.FullName.StartsWith("System.Runtime.Intrinsics");
+            var methodIsMarkedIntrinsic = method.CustomAttributes.Any(ca => ca.AttributeType.FullName == "System.Runtime.CompilerServices.IntrinsicAttribute");
+            
+            var declaringType = method.DeclaringType ?? throw new Exception($"Method {method.Name} does not have a {nameof(MethodBase.DeclaringType)}");
+            var declaringTypeIsMarkedIntrinsic = declaringType.CustomAttributes.Any(ca => ca.AttributeType.FullName == "System.Runtime.CompilerServices.IntrinsicAttribute");
+
+            var declaringTypeFullName = declaringType.FullName ?? throw new Exception($"Type {declaringType.Name} does not have a {nameof(Type.FullName)}");
+            var declaringTypeDerivesFromIntrinsic = declaringTypeFullName.StartsWith("System.Runtime.Intrinsics");
+            
+            return methodIsMarkedIntrinsic || declaringTypeIsMarkedIntrinsic || declaringTypeDerivesFromIntrinsic;
         }
 
         public static string CreateStubNameFromMethod(string prefix, MethodBase method)
