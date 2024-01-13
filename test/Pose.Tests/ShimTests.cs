@@ -493,6 +493,8 @@ namespace Pose.Tests
 
         private sealed class SealedClass
         {
+            public string SealedString { get; set; } = nameof(SealedString);
+            
             public string GetSealedString() => nameof(GetSealedString);
         }
 
@@ -500,19 +502,88 @@ namespace Pose.Tests
         public void Can_shim_method_of_sealed_class()
         {
             // Arrange
-            var instance = new SealedClass();
             var action = new Func<SealedClass, string>((SealedClass @this) => "String");
-            var shim = Shim.Replace(() => instance.GetSealedString()).With(action);
+            var shim = Shim.Replace(() => Is.A<SealedClass>().GetSealedString()).With(action);
 
             // Act
             string dt = default;
             PoseContext.Isolate(
-                () => { dt = instance.GetSealedString(); },
+                () =>
+                {
+                    var instance = new SealedClass();
+                    dt = instance.GetSealedString();
+                },
                 shim
             );
             
             // Assert
             dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
+
+            var sealedClass = new SealedClass();
+            dt.Should().NotBeEquivalentTo(sealedClass.GetSealedString(), because: "that is the original value");
+        }
+        
+        [Fact]
+        public void Can_shim_property_getter_of_sealed_class()
+        {
+            // Arrange
+            var action = new Func<SealedClass, string>((SealedClass @this) => "String");
+            var shim = Shim
+                .Replace(() => Is.A<SealedClass>().SealedString)
+                .With(action);
+
+            // Act
+            string dt = default;
+            PoseContext.Isolate(
+                () =>
+                {
+                    var instance = new SealedClass();
+                    dt = instance.SealedString;
+                },
+                shim
+            );
+            
+            // Assert
+            dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
+            
+            var sealedClass = new SealedClass();
+            dt.Should().NotBeEquivalentTo(sealedClass.SealedString, because: "that is the original value");
+        }
+        
+        [Fact]
+        public void Can_shim_property_setter_of_sealed_class()
+        {
+            // Arrange
+            var wasCalled = false;
+            var action = new Action<SealedClass, string>((SealedClass @this, string value) =>
+                {
+                    wasCalled = true;
+                    @this.SealedString = "Something";
+                }
+            );
+            var shim = Shim
+                .Replace(() => Is.A<SealedClass>().SealedString, setter: true)
+                .With(action);
+
+            // Act
+            wasCalled.Should().BeFalse(because: "no calls have been made yet");
+            string dt = default;
+            PoseContext.Isolate(
+                () =>
+                {
+                    var instance = new SealedClass();
+                    instance.SealedString = "!!!";
+                    dt = instance.SealedString;
+                },
+                shim
+            );
+            
+            // Assert
+            wasCalled.Should().BeTrue(because: "the shim has been invoked");
+            dt.Should().BeEquivalentTo("Something", because: "that is what the shim is configured to return");
+            
+            var sealedClass = new SealedClass();
+            dt.Should().NotBeEquivalentTo(sealedClass.SealedString, because: "that is the original value");
         }
     }
 }
