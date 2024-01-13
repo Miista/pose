@@ -490,5 +490,29 @@ namespace Pose.Tests
             dt.Should().BeEquivalentTo(_.GetStringFromAbstractBase(), because: "the shim configured the base class");
             wasCalled.Should().BeFalse(because: "the shim was not invoked");
         }
+
+        private sealed class SealedClass
+        {
+            public string GetSealedString() => nameof(GetSealedString);
+        }
+
+        [Fact]
+        public void Can_shim_method_of_sealed_class()
+        {
+            // Arrange
+            var instance = new SealedClass();
+            var action = new Func<SealedClass, string>((SealedClass @this) => "String");
+            var shim = Shim.Replace(() => instance.GetSealedString()).With(action);
+
+            // Act
+            string dt = default;
+            PoseContext.Isolate(
+                () => { dt = instance.GetSealedString(); },
+                shim
+            );
+            
+            // Assert
+            dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
+        }
     }
 }
