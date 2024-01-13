@@ -425,13 +425,20 @@ namespace Pose.Tests
         private abstract class AbstractBase
         {
             public virtual string GetStringFromAbstractBase() => "!";
+
+            public abstract string GetAbstractString();
         }
 
-        private class DerivedFromAbstractBase : AbstractBase { }
+        private class DerivedFromAbstractBase : AbstractBase
+        {
+            public override string GetAbstractString() => throw new NotImplementedException();
+        }
 
         private class ShadowsMethodFromAbstractBase : AbstractBase
         {
             public override string GetStringFromAbstractBase() => "Shadow";
+            
+            public override string GetAbstractString() => throw new NotImplementedException();
         }
         
         [Fact]
@@ -456,6 +463,42 @@ namespace Pose.Tests
             
             // Assert
             dt.Should().BeEquivalentTo("Hello", because: "the shim configured the base class");
+        }
+        
+        [Fact]
+        public void Can_shim_abstract_method_of_abstract_type()
+        {
+            // Arrange
+            const string returnValue = "Hello";
+            
+            var wasCalled = false;
+            var action = new Func<AbstractBase, string>(
+                (AbstractBase @this) =>
+                {
+                    wasCalled = true;
+                    return returnValue;
+                });
+            var shim = Shim
+                .Replace(() => Is.A<AbstractBase>().GetAbstractString())
+                .With(action);
+
+            // Act
+            string dt = default;
+            wasCalled.Should().BeFalse(because: "no calls have been made yet");
+            // ReSharper disable once SuggestVarOrType_SimpleTypes
+            Action act = () => PoseContext.Isolate(
+                () =>
+                {
+                    var instance = new DerivedFromAbstractBase();
+                    dt = instance.GetAbstractString();
+                },
+                shim
+            );
+            
+            // Assert
+            act.Should().NotThrow(because: "the shim works");
+            wasCalled.Should().BeTrue(because: "the shim has been invoked");
+            dt.Should().BeEquivalentTo(returnValue, because: "the shim configured the base class");
         }
         
         [Fact]
