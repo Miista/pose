@@ -106,7 +106,7 @@ namespace Pose.Tests
                     var shimmedInstance = new Instance();
                     var shim = Shim
                         .Replace(() => shimmedInstance.GetString())
-                        .With(new Func<Instance, string>((Instance @this) => "String"));
+                        .With((Instance @this) => "String");
 
                     // Act
                     string responseFromShimmedInstance = default;
@@ -180,10 +180,9 @@ namespace Pose.Tests
                 public void Can_shim_instance_method_of_abstract_type()
                 {
                     // Arrange
-                    var action = new Func<AbstractBase, string>((AbstractBase @this) => { return "Hello"; });
                     var shim = Shim
                         .Replace(() => Is.A<AbstractBase>().GetStringFromAbstractBase())
-                        .With(action);
+                        .With((AbstractBase @this) => "Hello");
 
                     // Act
                     string dt = default;
