@@ -421,5 +421,36 @@ namespace Pose.Tests
             x.Text.Should().BeEquivalentTo(nameof(Instance.Text), because: "the property was set in isolation");
 
         }
+
+        private abstract class AbstractBase
+        {
+            public string GetStringFromAbstractBase() => "!";
+        }
+
+        private class DerivedFromAbstractBase : AbstractBase { }
+        
+        [Fact]
+        public void Can_shim_instance_method_of_abstract_type()
+        {
+            // Arrange
+            var action = new Func<AbstractBase, string>((AbstractBase @this) => { return "Hello"; });
+            var shim = Shim
+                .Replace(() => Is.A<AbstractBase>().GetStringFromAbstractBase())
+                .With(action);
+
+            // Act
+            string dt = default;
+            PoseContext.Isolate(
+                () =>
+                {
+                    var instance = new DerivedFromAbstractBase();
+                    dt = instance.GetStringFromAbstractBase();
+                },
+                shim
+            );
+            
+            // Assert
+            dt.Should().BeEquivalentTo("Hello", because: "the shim configured the base class");
+        }
     }
 }
