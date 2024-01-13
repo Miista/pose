@@ -551,9 +551,50 @@ namespace Pose.Tests
             
             public class ValueTypes
             {
+                private struct Instance
+                {
+                    public string Text { get; set; }
+                }
                 
-            }
+                [Fact]
+                public void Can_shim_property_setter_of_any_instance()
+                {
+                    // Arrange
+                    var invocationCount = 0;
 
+                    var shim = Shim
+                        .Replace(() => Is.A<Instance>().Text, true)
+                        .With((ref Instance @this, string prop) => { invocationCount++; });
+
+                    // Pre-act assert
+                    invocationCount.Should().Be(0, because: "the shim has not been called yet");
+                    
+                    // Act
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            var instance1 = new Instance { Text = "Hello" };
+                            var instance2 = new Instance { Text = "Hello" };
+                        }, shim);
+                    
+                    // Assert
+                    invocationCount.Should().Be(2, because: "the shim was invoked 2 times");
+                }
+                
+                [Fact]
+                public void Cannot_shim_property_setter_of_specific_instance()
+                {
+                    // Arrange
+                    var instance = new Instance();
+                    Action act = () => Shim
+                        .Replace(() => instance.Text, setter: true)
+                        .With((ref Instance @this) => string.Empty);
+
+                    // Assert
+                    act.Should().Throw<NotSupportedException>(because: "instance methods on specific value type instances cannot be replaced");
+                }
+            }
+            
             public class SealedTypes
             {
                 private sealed class SealedClass
