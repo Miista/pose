@@ -424,10 +424,15 @@ namespace Pose.Tests
 
         private abstract class AbstractBase
         {
-            public string GetStringFromAbstractBase() => "!";
+            public virtual string GetStringFromAbstractBase() => "!";
         }
 
         private class DerivedFromAbstractBase : AbstractBase { }
+
+        private class ShadowsMethodFromAbstractBase : AbstractBase
+        {
+            public override string GetStringFromAbstractBase() => "Shadow";
+        }
         
         [Fact]
         public void Can_shim_instance_method_of_abstract_type()
@@ -451,6 +456,39 @@ namespace Pose.Tests
             
             // Assert
             dt.Should().BeEquivalentTo("Hello", because: "the shim configured the base class");
+        }
+        
+        [Fact]
+        public void Shim_is_not_invoked_if_method_is_overriden_in_derived_type()
+        {
+            // Arrange
+            var wasCalled = false;
+            var action = new Func<AbstractBase, string>(
+                (AbstractBase @this) =>
+                {
+                    wasCalled = true;
+                    return "Hello";
+                });
+            var shim = Shim
+                .Replace(() => Is.A<AbstractBase>().GetStringFromAbstractBase())
+                .With(action);
+
+            // Act
+            string dt = default;
+            wasCalled.Should().BeFalse(because: "no calls have been made yet");
+            PoseContext.Isolate(
+                () =>
+                {
+                    var instance = new ShadowsMethodFromAbstractBase();
+                    dt = instance.GetStringFromAbstractBase();
+                },
+                shim
+            );
+            
+            // Assert
+            var _ = new ShadowsMethodFromAbstractBase();
+            dt.Should().BeEquivalentTo(_.GetStringFromAbstractBase(), because: "the shim configured the base class");
+            wasCalled.Should().BeFalse(because: "the shim was not invoked");
         }
     }
 }
