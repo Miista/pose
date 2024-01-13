@@ -35,15 +35,16 @@ namespace Pose.Tests
         public void Cannot_rewrite_method_in_CoreLib()
         {
             // Arrange
-            var methodInfo = typeof(DateTime).GetMethod("get_UtcNow");
+            var methodInfo = typeof(Exception).GetMethod("get_Message");
             var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
 
             // Act
             var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
-            var func = dynamicMethod.CreateDelegate(typeof(Func<DateTime>));
+            var func = dynamicMethod.CreateDelegate(typeof(Func<Exception, string>));
 
             // Assert
-            func.DynamicInvoke().As<DateTime>().Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(10));
+            var exception = new Exception();
+            func.DynamicInvoke(exception).As<string>().Should().BeEquivalentTo(exception.Message);
         }
 
         [Fact]
