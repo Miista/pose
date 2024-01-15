@@ -154,6 +154,8 @@ namespace Pose.IL
             
             var ilGenerator = stub.GetILGenerator();
 
+            actualMethod = actualMethod ?? method;
+            
             if ((actualMethod.GetMethodBody() == null && !actualMethod.IsAbstract) || StubHelper.IsIntrinsic(actualMethod))
             {
                 // Method has no body or is a compiler intrinsic,

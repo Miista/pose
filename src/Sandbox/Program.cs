@@ -1,13 +1,38 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using Pose.IL;
 
 namespace Pose.Sandbox
 {
     public class Program
     {
+        public static async Task<int> GetAsyncInt() => await Task.FromResult(1);
+
+        public static async Task Lol()
+        {
+            var asyncInt = await GetAsyncInt();
+            Console.WriteLine(asyncInt);
+        }
+        
         public static void Main(string[] args)
         {
+            //Lol().GetAwaiter().GetResult();
+            
+            var shim = Shim
+                .Replace(() => Program.GetAsyncInt())
+                .With(() => Task.FromResult(2));
+            
+            PoseContext.IsolateAsync(
+                async () =>
+                {
+                    var @int = await GetAsyncInt();
+                    Console.WriteLine(@int);
+                }, shim).GetAwaiter().GetResult();
+            /*
 #if NET48
             Console.WriteLine("4.8");
             var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
@@ -58,7 +83,7 @@ namespace Pose.Sandbox
                     Console.WriteLine(DateTime.Now);
                 }, dateTimeShim);
 #endif
-
+*/
             // var dateTimeShim = Shim.Replace(() => T.I).With(() => "L");
             // var dateTimeShim1 = Shim.Replace(() => T.Get()).With(() => "Word");
             // var inst = new Inst();

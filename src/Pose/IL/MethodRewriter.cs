@@ -13,7 +13,7 @@ using Pose.IL.DebugHelpers;
 
 namespace Pose.IL
 {
-    internal class MethodRewriter
+    public class MethodRewriter
     {
         private static readonly List<OpCode> IgnoredOpCodes = new List<OpCode> { OpCodes.Endfilter, OpCodes.Endfinally };
         
