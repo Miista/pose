@@ -1,68 +1,70 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System;
-using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using Pose.IL;
+using System.Runtime.CompilerServices;
 
 namespace Pose.Sandbox
 {
-    namespace System.Runtime.CompilerServices
-    {
-        // AsyncVoidMethodBuilder.cs in your project
-        public class AsyncTaskMethodBuilder
-        {
-            public void AwaitOnCompleted<TAwaiter, TStateMachine>(
-                ref TAwaiter awaiter,
-                ref TStateMachine stateMachine
-            )
-                where TAwaiter : INotifyCompletion
-                where TStateMachine : IAsyncStateMachine
-            {
-            
-            }
-        
-            public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(
-                ref TAwaiter awaiter, ref TStateMachine stateMachine)
-                where TAwaiter : ICriticalNotifyCompletion
-                where TStateMachine : IAsyncStateMachine
-            {
-            
-            }
-
-            public void SetStateMachine(IAsyncStateMachine stateMachine) {}
-        
-            public void SetException(Exception exception) {}
-        
-            public Task Task => null;
-
-            public AsyncTaskMethodBuilder()
-                => Console.WriteLine(".ctor");
- 
-            public static AsyncTaskMethodBuilder Create()
-                => new AsyncTaskMethodBuilder();
- 
-            public void SetResult() => Console.WriteLine("SetResult");
- 
-            public void Start<TStateMachine>(ref TStateMachine stateMachine)
-                where TStateMachine : IAsyncStateMachine
-            {
-                Console.WriteLine("Start");
-                var methodInfos = stateMachine.GetType().GetMethods(BindingFlags.Instance | BindingFlags.NonPublic);
-                var methodRewriter = MethodRewriter.CreateRewriter(methodInfos[0], false);
-                var methodBase = methodRewriter.Rewrite();
-                stateMachine.MoveNext();
-            }
- 
-            // AwaitOnCompleted, AwaitUnsafeOnCompleted, SetException 
-            // and SetStateMachine are empty
-        }   
-    }
+    // namespace System.Runtime.CompilerServices
+    // {
+    //     // AsyncVoidMethodBuilder.cs in your project
+    //     public class AsyncTaskMethodBuilder
+    //     {
+    //         public void AwaitOnCompleted<TAwaiter, TStateMachine>(
+    //             ref TAwaiter awaiter,
+    //             ref TStateMachine stateMachine
+    //         )
+    //             where TAwaiter : INotifyCompletion
+    //             where TStateMachine : IAsyncStateMachine
+    //         {
+    //         
+    //         }
+    //     
+    //         public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(
+    //             ref TAwaiter awaiter, ref TStateMachine stateMachine)
+    //             where TAwaiter : ICriticalNotifyCompletion
+    //             where TStateMachine : IAsyncStateMachine
+    //         {
+    //         
+    //         }
+    //
+    //         public void SetStateMachine(IAsyncStateMachine stateMachine) {}
+    //     
+    //         public void SetException(Exception exception) {}
+    //     
+    //         public Task Task => null;
+    //
+    //         public AsyncTaskMethodBuilder()
+    //             => Console.WriteLine(".ctor");
+    //
+    //         public static AsyncTaskMethodBuilder Create()
+    //             => new AsyncTaskMethodBuilder();
+    //
+    //         public void SetResult() => Console.WriteLine("SetResult");
+    //
+    //         public void Start<TStateMachine>(ref TStateMachine stateMachine)
+    //             where TStateMachine : IAsyncStateMachine
+    //         {
+    //             Console.WriteLine("Start");
+    //             var methodInfos = stateMachine.GetType().GetMethods(BindingFlags.Instance | BindingFlags.NonPublic);
+    //             var methodRewriter = MethodRewriter.CreateRewriter(methodInfos[0], false);
+    //             var methodBase = methodRewriter.Rewrite();
+    //             stateMachine.MoveNext();
+    //         }
+    //
+    //         // AwaitOnCompleted, AwaitUnsafeOnCompleted, SetException 
+    //         // and SetStateMachine are empty
+    //     }   
+    // }
     
     public class Program
     {
-        public static async Task<int> GetAsyncInt() => await Task.FromResult(1);
+        public static async Task<int> GetAsyncInt()
+        {
+            await Task.Delay(1000);
+            return await Task.FromResult(1);
+        }
 
         public static async Task Lol()
         {
@@ -72,18 +74,24 @@ namespace Pose.Sandbox
         
         public static void Main(string[] args)
         {
-            Lol().GetAwaiter().GetResult();
+            //Lol().GetAwaiter().GetResult();
             
-            // var shim = Shim
-            //     .Replace(() => Program.GetAsyncInt())
-            //     .With(() => Task.FromResult(2));
-            //
-            // PoseContext.IsolateAsync(
-            //     async () =>
-            //     {
-            //         var @int = await GetAsyncInt();
-            //         Console.WriteLine(@int);
-            //     }, shim).GetAwaiter().GetResult();
+            var shim = Shim
+                .Replace(() => Program.GetAsyncInt())
+                .With(() => Task.FromResult(2));
+
+            PoseContext.Shims = new Shim[] { shim };
+            
+            // var shim1 = Shim
+            //     .Replace(() => System.Runtime.CompilerServices.AsyncTaskMethodBuilder.Create())
+            //     .With(() => System.Runtime.CompilerServices1.AsyncTaskMethodBuilder.Create());
+            
+            PoseContext.IsolateAsync(
+                async () =>
+                {
+                    var @int = await GetAsyncInt();
+                    Console.WriteLine(@int);
+                }, shim);
             /*
 #if NET48
             Console.WriteLine("4.8");

@@ -65,8 +65,8 @@ namespace Pose.Helpers
                                         .Skip(isStaticOrConstructor ? 0 : 1)
                                         .ToArray();
 
-            if (validReturnType != shimReturnType)
-                throw new InvalidShimSignatureException($"Mismatched return types. Expected {validReturnType}. Got {shimReturnType}");
+            // if (validReturnType != shimReturnType)
+            //     throw new InvalidShimSignatureException($"Mismatched return types. Expected {validReturnType}. Got {shimReturnType}");
 
             if (!isStaticOrConstructor)
             {
