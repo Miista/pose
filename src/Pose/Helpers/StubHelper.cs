@@ -9,14 +9,15 @@ namespace Pose.Helpers
 {
     internal static class StubHelper
     {
+        private static readonly MethodInfo GetMethodDescriptor =
+            typeof(DynamicMethod).GetMethod("GetMethodDescriptor", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new Exception($"Cannot get method GetMethodDescriptor from type {nameof(DynamicMethod)}");
+
         public static IntPtr GetMethodPointer(MethodBase method)
         {
             if (method is DynamicMethod dynamicMethod)
             {
-                var methodDescriptor = typeof(DynamicMethod).GetMethod("GetMethodDescriptor", BindingFlags.Instance | BindingFlags.NonPublic)
-                                        ?? throw new Exception($"Cannot get method GetMethodDescriptor from type {nameof(DynamicMethod)}");
-                
-                return ((RuntimeMethodHandle)methodDescriptor.Invoke(dynamicMethod, null)).GetFunctionPointer();
+                return ((RuntimeMethodHandle)GetMethodDescriptor.Invoke(dynamicMethod, null)).GetFunctionPointer();
             }
 
             return method.MethodHandle.GetFunctionPointer();
