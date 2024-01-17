@@ -1,9 +1,9 @@
-using System;
-using System.Reflection;
-using System.Reflection.Emit;
-
 namespace Pose.Extensions
 {
+    using System;
+    using System.Reflection;
+    using System.Reflection.Emit;
+    
     internal static class ILGeneratorExtensions
     {
         public static byte[] GetILBytes(this ILGenerator ilGenerator)

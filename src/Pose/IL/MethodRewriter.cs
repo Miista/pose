@@ -16,11 +16,15 @@ namespace Pose.IL
     internal class MethodRewriter
     {
         private static readonly List<OpCode> IgnoredOpCodes = new List<OpCode> { OpCodes.Endfilter, OpCodes.Endfinally };
-        
+
+        private static readonly MethodInfo Unbox =
+            typeof(Unsafe).GetMethod(nameof(Unsafe.Unbox))
+            ?? throw new Exception($"Cannot get method {nameof(Unsafe.Unbox)} from type {nameof(Unsafe)}");
+
         private readonly MethodBase _method;
         private readonly Type _owningType;
         private readonly bool _isInterfaceDispatch;
-
+        
         private int _exceptionBlockLevel;
         private TypeInfo _constrainedType;
 
@@ -247,9 +251,7 @@ namespace Pose.IL
 
         private void EmitThisPointerAccessForBoxedValueType(ILGenerator ilGenerator)
         {
-            var unboxMethod = typeof(Unsafe).GetMethod(nameof(Unsafe.Unbox)) ?? throw new Exception($"Cannot get method {nameof(Unsafe.Unbox)} from type {nameof(Unsafe)}");
-            
-            ilGenerator.Emit(OpCodes.Call, unboxMethod.MakeGenericMethod(_method.DeclaringType));
+            ilGenerator.Emit(OpCodes.Call, Unbox.MakeGenericMethod(_method.DeclaringType));
         }
 
         private void EmitILForInlineNone(ILGenerator ilGenerator, Instruction instruction)
