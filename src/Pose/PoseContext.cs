@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using Pose.IL;
@@ -23,9 +22,13 @@ namespace Pose
             Shims = shims;
             StubCache = new Dictionary<MethodBase, DynamicMethod>();
 
-            Type delegateType = typeof(Action<>).MakeGenericType(entryPoint.Target.GetType());
-            MethodRewriter rewriter = MethodRewriter.CreateRewriter(entryPoint.Method, false);
-            ((MethodInfo)(rewriter.Rewrite())).CreateDelegate(delegateType).DynamicInvoke(entryPoint.Target);
+            var delegateType = typeof(Action<>).MakeGenericType(entryPoint.Target.GetType());
+            var rewriter = MethodRewriter.CreateRewriter(entryPoint.Method, false);
+            Console.WriteLine("----------------------------- Rewriting ----------------------------- ");
+            var methodInfo = (MethodInfo)(rewriter.Rewrite());
+
+            Console.WriteLine("----------------------------- Invoking ----------------------------- ");
+            methodInfo.CreateDelegate(delegateType).DynamicInvoke(entryPoint.Target);
         }
     }
 }

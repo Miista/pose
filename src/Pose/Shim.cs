@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -11,7 +10,7 @@ namespace Pose
     {
         private MethodBase _original;
         private Delegate _replacement;
-        private Object _instance;
+        private object _instance;
         private Type _type;
         private bool _setter;
 
@@ -31,7 +30,7 @@ namespace Pose
             }
         }
 
-        internal Object Instance
+        internal object Instance
         {
             get
             {
@@ -64,7 +63,7 @@ namespace Pose
 
         private static Shim ReplaceImpl<T>(Expression<T> expression, bool setter)
         {
-            MethodBase methodBase = ShimHelper.GetMethodFromExpression(expression.Body, setter, out object instance);
+            var methodBase = ShimHelper.GetMethodFromExpression(expression.Body, setter, out var instance);
             return new Shim(methodBase, instance) { _setter = setter };
         }
 

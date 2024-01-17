@@ -7,23 +7,23 @@ namespace Pose.IL.DebugHelpers
 {
     internal class DynamicModule: Module
     {
-        private static FieldInfo s_scopeField;
-
-        private readonly ILGenerator m_ilGenerator;
+        private static FieldInfo _scopeField;
+        
+        private readonly ILGenerator _ilGenerator;
 
         public DynamicModule(ILGenerator ilGenerator)
         {
-            m_ilGenerator = ilGenerator;
+            _ilGenerator = ilGenerator ?? throw new ArgumentNullException(nameof(ilGenerator));
 
-            if (s_scopeField == null)
+            if (_scopeField == null)
             {
-                s_scopeField = m_ilGenerator.GetType().GetField("m_scope", BindingFlags.Instance | BindingFlags.NonPublic);
+                _scopeField = _ilGenerator.GetType().GetField("m_scope", BindingFlags.Instance | BindingFlags.NonPublic);
             }
         }
 
         public override string ResolveString(int metadataToken)
         {
-            var dynamicScope = s_scopeField.GetValue(m_ilGenerator);
+            var dynamicScope = _scopeField.GetValue(_ilGenerator);
             Debug.Assert(dynamicScope != null);
 
             return (string)dynamicScope.GetType().GetMethod("GetString", BindingFlags.Instance | BindingFlags.NonPublic)
@@ -32,7 +32,7 @@ namespace Pose.IL.DebugHelpers
 
         public override MemberInfo ResolveMember(int metadataToken, Type[] genericTypeArguments, Type[] genericMethodArguments)
         {
-            var dynamicScope = s_scopeField.GetValue(m_ilGenerator);
+            var dynamicScope = _scopeField.GetValue(_ilGenerator);
             Debug.Assert(dynamicScope != null);
 
             var handle = dynamicScope.GetType().GetMethod("get_Item", BindingFlags.Instance | BindingFlags.NonPublic)
@@ -42,7 +42,7 @@ namespace Pose.IL.DebugHelpers
 
             if (handle is RuntimeTypeHandle typeHandle)
             {
-                return TypeInfo.GetTypeFromHandle(typeHandle).GetTypeInfo();
+                return Type.GetTypeFromHandle(typeHandle).GetTypeInfo();
             }
 
             if (handle is RuntimeMethodHandle methodHandle)
@@ -79,7 +79,7 @@ namespace Pose.IL.DebugHelpers
 
         public override byte[] ResolveSignature(int metadataToken)
         {
-            var dynamicScope = s_scopeField.GetValue(m_ilGenerator);
+            var dynamicScope = _scopeField.GetValue(_ilGenerator);
             Debug.Assert(dynamicScope != null);
 
             return (byte[])dynamicScope.GetType().GetMethod("ResolveSignature", BindingFlags.Instance | BindingFlags.NonPublic)

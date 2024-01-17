@@ -1,54 +1,209 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
+using System.Linq;
 using System.Reflection.Emit;
-
-using Pose.Helpers;
+using FluentAssertions;
 using Pose.IL;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
+// ReSharper disable PossibleNullReferenceException
 
 namespace Pose.Tests
 {
-    [TestClass]
     public class MethodRewriterTests
     {
-        [TestMethod]
-        public void TestStaticMethodRewrite()
+        private class ClassWithStaticMethod
         {
-            MethodInfo methodInfo = typeof(DateTime).GetMethod("get_Now");
-            MethodRewriter methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
-            DynamicMethod dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+            public static string Now { get; } = "?";
+        }
+        
+        [Fact]
+        public void Can_rewrite_static_method()
+        {
+            // Arrange
+            var methodInfo = typeof(ClassWithStaticMethod).GetMethod("get_Now");
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
 
-            Delegate func = dynamicMethod.CreateDelegate(typeof(Func<DateTime>));
-            Assert.AreEqual(DateTime.Now.ToString("yyyyMMdd_HHmm"), ((DateTime)func.DynamicInvoke()).ToString("yyyyMMdd_HHmm"));
+            // Act
+            var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+            var func = dynamicMethod.CreateDelegate(typeof(Func<string>));
+
+            // Assert
+            func.DynamicInvoke().As<string>().Should().BeEquivalentTo("?");
+        }
+        
+        [Fact]
+        public void Cannot_rewrite_method_in_CoreLib()
+        {
+            // Arrange
+            var methodInfo = typeof(Exception).GetMethod("get_Message");
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+
+            // Act
+            var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+            var func = dynamicMethod.CreateDelegate(typeof(Func<Exception, string>));
+
+            // Assert
+            var exception = new Exception();
+            func.DynamicInvoke(exception).As<string>().Should().BeEquivalentTo(exception.Message);
         }
 
-        [TestMethod]
-        public void TestInstanceMethodRewrite()
+        [Fact]
+        public void Can_rewrite_instance_method()
         {
-            string item = "Item 1";
-            List<string> list = new List<string>();
-            MethodInfo methodInfo = typeof(List<string>).GetMethod("Add");
-            MethodRewriter methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
-            DynamicMethod dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+            // Arrange
+            const string item = "Item 1";
+            
+            var list = new List<string>();
+            var methodInfo = typeof(List<string>).GetMethod(nameof(List<string>.Add));
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+            var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+            var func = dynamicMethod.CreateDelegate(typeof(Action<List<string>, string>));
 
-            Delegate func = dynamicMethod.CreateDelegate(typeof(Action<List<string>, string>));
+            // Act
             func.DynamicInvoke(list, item);
 
-            Assert.AreEqual(1, list.Count);
-            Assert.AreEqual(item, list[0]);
+            // Assert
+            list.Should().HaveCount(1);
+            list[0].Should().BeEquivalentTo(item);
         }
 
-        [TestMethod]
-        public void TestConstructorRewrite()
+        [Fact]
+        public void Can_rewrite_constructor()
         {
-            List<string> list = new List<string>();
-            ConstructorInfo constructorInfo = typeof(List<string>).GetConstructor(Type.EmptyTypes);
-            MethodRewriter methodRewriter = MethodRewriter.CreateRewriter(constructorInfo, false);
-            DynamicMethod dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+            // Arrange
+            var constructorInfo = typeof(List<string>).GetConstructor(Type.EmptyTypes);
+            var methodRewriter = MethodRewriter.CreateRewriter(constructorInfo, false);
+            
+            // Act
+            var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
 
-            Assert.AreEqual(typeof(void), dynamicMethod.ReturnType);
-            Assert.AreEqual(typeof(List<string>), dynamicMethod.GetParameters()[0].ParameterType);
+            // Assert
+            dynamicMethod.Should().NotBeNull();
+            dynamicMethod.ReturnType.Should().Be(typeof(void));
+            
+            var firstParameter = dynamicMethod.GetParameters().FirstOrDefault();
+            firstParameter.Should().NotBeNull();
+            firstParameter.ParameterType.Should().Be<List<string>>(because: "that is the first parameter to the constructor");
+        }
+        
+        [Fact]
+        public void Can_rewrite_try_catch_returning_from_try()
+        {
+            // Arrange
+            var methodInfo = typeof(MethodRewriterTests).GetMethod(nameof(TryCatch_ReturnsFromTry));
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+            var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+
+            // Act
+            var func = dynamicMethod.CreateDelegate(typeof(Func<int>));
+            var result = (int) func.DynamicInvoke();
+
+            // Assert
+            result.Should().Be(1, because: "that is what the method returns from the try block");
+        }
+
+        public static int TryCatch_ReturnsFromTry()
+        {
+            try
+            {
+                return 1;
+            }
+            catch
+            {
+                return 0;
+            }
+            finally {}
+        }
+
+        [Fact]
+        public void Can_rewrite_try_catch_returning_from_catch()
+        {
+            // Arrange
+            var methodInfo = typeof(MethodRewriterTests).GetMethod(nameof(TryCatch_ReturnsFromCatch));
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+            var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+
+            // Act
+            var func = dynamicMethod.CreateDelegate(typeof(Func<int>));
+            var result = (int) func.DynamicInvoke();
+
+            // Assert
+            result.Should().Be(0, because: "that is what the method returns from the catch block");
+        }
+
+        public static int TryCatch_ReturnsFromCatch()
+        {
+            try
+            {
+                throw new Exception();
+            }
+            catch
+            {
+                return 0;
+            }
+            finally {}
+        }
+        
+        [Fact]
+        public void Can_rewrite_try_catch_returning_from_finally()
+        {
+            // Arrange
+            var methodInfo = typeof(MethodRewriterTests).GetMethod(nameof(TryCatch_ReturnsFromFinally));
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+            var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+
+            // Act
+            var func = dynamicMethod.CreateDelegate(typeof(Func<int>));
+            var result = (int) func.DynamicInvoke();
+
+            // Assert
+            result.Should().Be(3, because: "that is what the method returns from the finally block");
+        }
+
+        public static int TryCatch_ReturnsFromFinally()
+        {
+            int value = 0;
+            try
+            {
+                value = 1;
+                throw new Exception();
+            }
+            catch
+            {
+                value = 2;
+            }
+            finally
+            {
+                value = 3;
+            }
+
+            return value;
+        }
+        
+        [Fact]
+        public void Can_rewrite_try_catch_blocks()
+        {
+            var called = false;
+            var enteredCatchBlock = false;
+            
+            Action act = () => PoseContext.Isolate(
+                () =>
+                {
+                    try
+                    {
+                        // ReSharper disable once Xunit.XunitTestWithConsoleOutput
+                        Console.WriteLine("H");
+                        called = true;
+                    }
+                    catch (Exception e)
+                    {
+                        enteredCatchBlock = true;
+                    }
+                });
+
+            act.Should().NotThrow();
+            called.Should().BeTrue();
+            enteredCatchBlock.Should().BeFalse();
         }
     }
 }

@@ -1,13 +1,12 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 
 using Mono.Reflection;
-
+using Pose.Exceptions;
 using Pose.Extensions;
 using Pose.Helpers;
 using Pose.IL.DebugHelpers;
@@ -16,30 +15,38 @@ namespace Pose.IL
 {
     internal class MethodRewriter
     {
-        private MethodBase m_method;
+        private static readonly List<OpCode> IgnoredOpCodes = new List<OpCode> { OpCodes.Endfilter, OpCodes.Endfinally };
+        
+        private readonly MethodBase _method;
+        private readonly Type _owningType;
+        private readonly bool _isInterfaceDispatch;
 
-        private Type m_owningType;
+        private int _exceptionBlockLevel;
+        private TypeInfo _constrainedType;
 
-        private bool m_isInterfaceDispatch;
-
-        private int m_exceptionBlockLevel;
-
-        private TypeInfo m_constrainedType;
-
-        private static List<OpCode> s_IngoredOpCodes = new List<OpCode> { OpCodes.Endfilter, OpCodes.Endfinally };
+        private MethodRewriter(MethodBase method, Type owningType, bool isInterfaceDispatch)
+        {
+            _method = method ?? throw new ArgumentNullException(nameof(method));
+            _owningType = owningType ?? throw new ArgumentNullException(nameof(owningType));
+            _isInterfaceDispatch = isInterfaceDispatch;
+        }
 
         public static MethodRewriter CreateRewriter(MethodBase method, bool isInterfaceDispatch)
         {
-            return new MethodRewriter { m_method = method, m_owningType = method.DeclaringType, m_isInterfaceDispatch = isInterfaceDispatch };
+            return new MethodRewriter(
+                method: method,
+                owningType: method.DeclaringType,
+                isInterfaceDispatch: isInterfaceDispatch
+            );
         }
 
         public MethodBase Rewrite()
         {
-            List<Type> parameterTypes = new List<Type>();
-            if (!m_method.IsStatic)
+            var parameterTypes = new List<Type>();
+            if (!_method.IsStatic)
             {
-                Type thisType = m_isInterfaceDispatch ? typeof(object) : m_owningType;
-                if (!m_isInterfaceDispatch && m_owningType.IsValueType)
+                var thisType = _isInterfaceDispatch ? typeof(object) : _owningType;
+                if (!_isInterfaceDispatch && _owningType.IsValueType)
                 {
                     thisType = thisType.MakeByRefType();
                 }
@@ -47,73 +54,83 @@ namespace Pose.IL
                 parameterTypes.Add(thisType);
             }
 
-            parameterTypes.AddRange(m_method.GetParameters().Select(p => p.ParameterType));
-            Type returnType = m_method.IsConstructor ? typeof(void) : (m_method as MethodInfo).ReturnType;
+            parameterTypes.AddRange(_method.GetParameters().Select(p => p.ParameterType));
+            var returnType = _method.IsConstructor ? typeof(void) : (_method as MethodInfo).ReturnType;
 
-            DynamicMethod dynamicMethod = new DynamicMethod(
-                StubHelper.CreateStubNameFromMethod("impl", m_method),
+            var dynamicMethod = new DynamicMethod(
+                StubHelper.CreateStubNameFromMethod("impl", _method),
                 returnType,
                 parameterTypes.ToArray(),
                 StubHelper.GetOwningModule(),
                 true);
 
-            var methodBody = m_method.GetMethodBody();
+            var methodBody = _method.GetMethodBody() ?? throw new MethodRewriteException($"Method {_method.Name} does not have a body");
             var locals = methodBody.LocalVariables;
             var targetInstructions = new Dictionary<int, Label>();
             var handlers = new List<ExceptionHandler>();
 
             var ilGenerator = dynamicMethod.GetILGenerator();
-            var instructions = m_method.GetInstructions();
+            var instructions = _method.GetInstructions();
 
             foreach (var clause in methodBody.ExceptionHandlingClauses)
             {
-                ExceptionHandler handler = new ExceptionHandler();
-                handler.Flags = clause.Flags;
-                handler.CatchType = clause.Flags == ExceptionHandlingClauseOptions.Clause ? clause.CatchType : null;
-                handler.TryStart = clause.TryOffset;
-                handler.TryEnd = clause.TryOffset + clause.TryLength;
-                handler.FilterStart = clause.Flags == ExceptionHandlingClauseOptions.Filter ? clause.FilterOffset : -1;
-                handler.HandlerStart = clause.HandlerOffset;
-                handler.HandlerEnd = clause.HandlerOffset + clause.HandlerLength;
+                var handler = new ExceptionHandler
+                {
+                    Flags = clause.Flags,
+                    CatchType = clause.Flags == ExceptionHandlingClauseOptions.Clause ? clause.CatchType : null,
+                    TryStart = clause.TryOffset,
+                    TryEnd = clause.TryOffset + clause.TryLength,
+                    FilterStart = clause.Flags == ExceptionHandlingClauseOptions.Filter ? clause.FilterOffset : -1,
+                    HandlerStart = clause.HandlerOffset,
+                    HandlerEnd = clause.HandlerOffset + clause.HandlerLength
+                };
                 handlers.Add(handler);
             }
 
             foreach (var local in locals)
+            {
                 ilGenerator.DeclareLocal(local.LocalType, local.IsPinned);
+            }
 
             var ifTargets = instructions
-                .Where(i => (i.Operand as Instruction) != null)
-                .Select(i => (i.Operand as Instruction));
+                .Where(i => i.Operand is Instruction)
+                .Select(i => i.Operand as Instruction);
 
-            foreach (Instruction instruction in ifTargets)
-                targetInstructions.TryAdd(instruction.Offset, ilGenerator.DefineLabel());
+            foreach (var ifInstruction in ifTargets)
+            {
+                if (ifInstruction == null) throw new Exception("The impossible happened");
+                
+                targetInstructions.TryAdd(ifInstruction.Offset, ilGenerator.DefineLabel());
+            }
 
             var switchTargets = instructions
-                .Where(i => (i.Operand as Instruction[]) != null)
-                .Select(i => (i.Operand as Instruction[]));
+                .Where(i => i.Operand is Instruction[])
+                .Select(i => i.Operand as Instruction[]);
 
-            foreach (Instruction[] _instructions in switchTargets)
+            foreach (var switchInstructions in switchTargets)
             {
-                foreach (Instruction _instruction in _instructions)
-                    targetInstructions.TryAdd(_instruction.Offset, ilGenerator.DefineLabel());
+                if (switchInstructions == null) throw new Exception("The impossible happened");
+                
+                foreach (var instruction in switchInstructions)
+                    targetInstructions.TryAdd(instruction.Offset, ilGenerator.DefineLabel());
             }
 
 #if DEBUG
-            Debug.WriteLine("\n" + m_method);
+            Console.WriteLine("\n" + _method);
 #endif
 
             foreach (var instruction in instructions)
             {
 #if DEBUG
-                Debug.WriteLine(instruction);
+                Console.WriteLine(instruction);
 #endif
 
                 EmitILForExceptionHandlers(ilGenerator, instruction, handlers);
 
-                if (targetInstructions.TryGetValue(instruction.Offset, out Label label))
+                if (targetInstructions.TryGetValue(instruction.Offset, out var label))
                     ilGenerator.MarkLabel(label);
 
-                if (s_IngoredOpCodes.Contains(instruction.OpCode)) continue;
+                if (IgnoredOpCodes.Contains(instruction.OpCode)) continue;
 
                 switch (instruction.OpCode.OperandType)
                 {
@@ -163,23 +180,23 @@ namespace Pose.IL
 #if DEBUG
             var ilBytes = ilGenerator.GetILBytes();
             var browsableDynamicMethod = new BrowsableDynamicMethod(dynamicMethod, new DynamicMethodBody(ilBytes, locals));
-            Debug.WriteLine("\n" + dynamicMethod);
+            Console.WriteLine("\n" + dynamicMethod);
 
             foreach (var instruction in browsableDynamicMethod.GetInstructions())
             {
-                Debug.WriteLine(instruction);
+                Console.WriteLine(instruction);
             }
 #endif
             return dynamicMethod;
         }
 
-        private void EmitILForExceptionHandlers(ILGenerator ilGenerator, Instruction instruction, List<ExceptionHandler> handlers)
+        private void EmitILForExceptionHandlers(ILGenerator ilGenerator, Instruction instruction, IReadOnlyCollection<ExceptionHandler> handlers)
         {
             var tryBlocks = handlers.Where(h => h.TryStart == instruction.Offset).GroupBy(h => h.TryEnd);
             foreach (var tryBlock in tryBlocks)
             {
                 ilGenerator.BeginExceptionBlock();
-                m_exceptionBlockLevel++;
+                _exceptionBlockLevel++;
             }
 
             var filterBlock = handlers.FirstOrDefault(h => h.FilterStart == instruction.Offset);
@@ -195,13 +212,13 @@ namespace Pose.IL
                 {
                     // Finally blocks are always the last handler
                     ilGenerator.EndExceptionBlock();
-                    m_exceptionBlockLevel--;
+                    _exceptionBlockLevel--;
                 }
                 else if (handler.HandlerEnd == handlers.Where(h => h.TryStart == handler.TryStart && h.TryEnd == handler.TryEnd).Max(h => h.HandlerEnd))
                 {
                     // We're dealing with the last catch block
                     ilGenerator.EndExceptionBlock();
-                    m_exceptionBlockLevel--;
+                    _exceptionBlockLevel--;
                 }
             }
 
@@ -230,13 +247,15 @@ namespace Pose.IL
 
         private void EmitThisPointerAccessForBoxedValueType(ILGenerator ilGenerator)
         {
-            ilGenerator.Emit(OpCodes.Call, typeof(Unsafe).GetMethod("Unbox").MakeGenericMethod(m_method.DeclaringType));
+            var unboxMethod = typeof(Unsafe).GetMethod(nameof(Unsafe.Unbox)) ?? throw new Exception($"Cannot get method {nameof(Unsafe.Unbox)} from type {nameof(Unsafe)}");
+            
+            ilGenerator.Emit(OpCodes.Call, unboxMethod.MakeGenericMethod(_method.DeclaringType));
         }
 
         private void EmitILForInlineNone(ILGenerator ilGenerator, Instruction instruction)
         {
             ilGenerator.Emit(instruction.OpCode);
-            if (m_isInterfaceDispatch && m_owningType.IsValueType && instruction.OpCode == OpCodes.Ldarg_0)
+            if (_isInterfaceDispatch && _owningType.IsValueType && instruction.OpCode == OpCodes.Ldarg_0)
             {
                 EmitThisPointerAccessForBoxedValueType(ilGenerator);
             }
@@ -265,12 +284,11 @@ namespace Pose.IL
         private void EmitILForInlineString(ILGenerator ilGenerator, Instruction instruction)
             => ilGenerator.Emit(instruction.OpCode, (string)instruction.Operand);
 
-        private void EmitILForInlineBrTarget(ILGenerator ilGenerator,
-            Instruction instruction, Dictionary<int, Label> targetInstructions)
+        private void EmitILForInlineBrTarget(ILGenerator ilGenerator, Instruction instruction, IReadOnlyDictionary<int, Label> targetInstructions)
         {
-            Label targetLabel = targetInstructions[(instruction.Operand as Instruction).Offset];
+            var targetLabel = targetInstructions[(instruction.Operand as Instruction).Offset];
 
-            OpCode opCode = instruction.OpCode;
+            var opCode = instruction.OpCode;
 
             // Offset values could change and not be short form anymore
             if (opCode == OpCodes.Br_S) opCode = OpCodes.Br;
@@ -290,7 +308,7 @@ namespace Pose.IL
 
             // Check if 'Leave' opcode is being used in an exception block,
             // only emit it if that's not the case
-            if (opCode == OpCodes.Leave && m_exceptionBlockLevel > 0) return;
+            if (opCode == OpCodes.Leave && _exceptionBlockLevel > 0) return;
 
             ilGenerator.Emit(opCode, targetLabel);
         }
@@ -298,16 +316,16 @@ namespace Pose.IL
         private void EmitILForInlineSwitch(ILGenerator ilGenerator,
             Instruction instruction, Dictionary<int, Label> targetInstructions)
         {
-            Instruction[] switchInstructions = (Instruction[])instruction.Operand;
-            Label[] targetLabels = new Label[switchInstructions.Length];
-            for (int i = 0; i < switchInstructions.Length; i++)
+            var switchInstructions = (Instruction[])instruction.Operand;
+            var targetLabels = new Label[switchInstructions.Length];
+            for (var i = 0; i < switchInstructions.Length; i++)
                 targetLabels[i] = targetInstructions[switchInstructions[i].Offset];
             ilGenerator.Emit(instruction.OpCode, targetLabels);
         }
 
         private void EmitILForInlineVar(ILGenerator ilGenerator, Instruction instruction)
         {
-            int index = 0;
+            var index = 0;
             if (instruction.OpCode.Name.Contains("loc"))
             {
                 index = ((LocalVariableInfo)instruction.Operand).LocalIndex;
@@ -315,7 +333,7 @@ namespace Pose.IL
             else
             {
                 index = ((ParameterInfo)instruction.Operand).Position;
-                index += m_method.IsStatic ? 0 : 1;
+                index += _method.IsStatic ? 0 : 1;
             }
 
             if (instruction.OpCode.OperandType == OperandType.ShortInlineVar)
@@ -323,7 +341,7 @@ namespace Pose.IL
             else
                 ilGenerator.Emit(instruction.OpCode, (ushort)index);
 
-            if (m_isInterfaceDispatch && m_owningType.IsValueType && instruction.OpCode.Name.StartsWith("ldarg") && index == 0)
+            if (_isInterfaceDispatch && _owningType.IsValueType && instruction.OpCode.Name.StartsWith("ldarg") && index == 0)
             {
                 EmitThisPointerAccessForBoxedValueType(ilGenerator);
             }
@@ -333,36 +351,49 @@ namespace Pose.IL
         {
             if (instruction.OpCode == OpCodes.Constrained)
             {
-                m_constrainedType = typeInfo;
+                _constrainedType = typeInfo;
                 return;
             }
 
             ilGenerator.Emit(instruction.OpCode, typeInfo);
         }
 
+        private static bool ShouldForward(MethodBase member)
+        {
+            var declaringType = member.DeclaringType ?? throw new Exception($"Type {member.Name} does not have a {nameof(MethodBase.DeclaringType)}");
+
+            // Don't attempt to rewrite inaccessible constructors in System.Private.CoreLib/mscorlib
+            if (!declaringType.IsPublic) return true;
+            if (!member.IsPublic && !member.IsFamily && !member.IsFamilyOrAssembly) return true;
+
+            return false;
+        }
+        
         private void EmitILForConstructor(ILGenerator ilGenerator, Instruction instruction, ConstructorInfo constructorInfo)
         {
             if (constructorInfo.InCoreLibrary())
             {
-                // Don't attempt to rewrite unaccessible constructors in System.Private.CoreLib/mscorlib
-                if (!constructorInfo.DeclaringType.IsPublic) goto forward;
-                if (!constructorInfo.IsPublic && !constructorInfo.IsFamily && !constructorInfo.IsFamilyOrAssembly) goto forward;
+                // Don't attempt to rewrite inaccessible constructors in System.Private.CoreLib/mscorlib
+                if (ShouldForward(constructorInfo)) goto forward;
             }
 
             if (instruction.OpCode == OpCodes.Call)
             {
+                //ilGenerator.Emit(OpCodes.Call, Stubs.GenerateStubForConstructor(constructorInfo, instruction.OpCode, constructorInfo.IsForValueType()));
                 ilGenerator.Emit(OpCodes.Call, Stubs.GenerateStubForDirectCall(constructorInfo));
                 return;
             }
 
             if (instruction.OpCode == OpCodes.Newobj)
             {
+                //ilGenerator.Emit(OpCodes.Call, Stubs.GenerateStubForConstructor(constructorInfo, instruction.OpCode, constructorInfo.IsForValueType()));
                 ilGenerator.Emit(OpCodes.Call, Stubs.GenerateStubForObjectInitialization(constructorInfo));
                 return;
             }
 
             if (instruction.OpCode == OpCodes.Ldftn)
             {
+                //ilGenerator.Emit(OpCodes.Call, Stubs.GenerateStubForConstructor(constructorInfo, instruction.OpCode, constructorInfo.IsForValueType()));
                 ilGenerator.Emit(OpCodes.Call, Stubs.GenerateStubForDirectLoad(constructorInfo));
                 return;
             }
@@ -379,9 +410,8 @@ namespace Pose.IL
         {
             if (methodInfo.InCoreLibrary())
             {
-                // Don't attempt to rewrite unaccessible methods in System.Private.CoreLib/mscorlib
-                if (!methodInfo.DeclaringType.IsPublic) goto forward;
-                if (!methodInfo.IsPublic && !methodInfo.IsFamily && !methodInfo.IsFamilyOrAssembly) goto forward;
+                // Don't attempt to rewrite inaccessible methods in System.Private.CoreLib/mscorlib
+                if (ShouldForward(methodInfo)) goto forward;
             }
 
             if (instruction.OpCode == OpCodes.Call)
@@ -392,10 +422,10 @@ namespace Pose.IL
 
             if (instruction.OpCode == OpCodes.Callvirt)
             {
-                if (m_constrainedType != null)
+                if (_constrainedType != null)
                 {
-                    ilGenerator.Emit(OpCodes.Call, Stubs.GenerateStubForVirtualCall(methodInfo, m_constrainedType));
-                    m_constrainedType = null;
+                    ilGenerator.Emit(OpCodes.Call, Stubs.GenerateStubForVirtualCall(methodInfo, _constrainedType));
+                    _constrainedType = null;
                     return;
                 }
 
@@ -421,7 +451,7 @@ namespace Pose.IL
 
         private void EmitILForInlineMember(ILGenerator ilGenerator, Instruction instruction)
         {
-            MemberInfo memberInfo = (MemberInfo)instruction.Operand;
+            var memberInfo = (MemberInfo)instruction.Operand;
             if (memberInfo.MemberType == MemberTypes.Field)
             {
                 ilGenerator.Emit(instruction.OpCode, memberInfo as FieldInfo);

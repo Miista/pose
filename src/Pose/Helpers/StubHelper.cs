@@ -11,10 +11,12 @@ namespace Pose.Helpers
     {
         public static IntPtr GetMethodPointer(MethodBase method)
         {
-            if (method is DynamicMethod)
+            if (method is DynamicMethod dynamicMethod)
             {
-                var methodDescriptior = typeof(DynamicMethod).GetMethod("GetMethodDescriptor", BindingFlags.Instance | BindingFlags.NonPublic);
-                return ((RuntimeMethodHandle)methodDescriptior.Invoke(method as DynamicMethod, null)).GetFunctionPointer();
+                var methodDescriptor = typeof(DynamicMethod).GetMethod("GetMethodDescriptor", BindingFlags.Instance | BindingFlags.NonPublic)
+                                        ?? throw new Exception($"Cannot get method GetMethodDescriptor from type {nameof(DynamicMethod)}");
+                
+                return ((RuntimeMethodHandle)methodDescriptor.Invoke(dynamicMethod, null)).GetFunctionPointer();
             }
 
             return method.MethodHandle.GetFunctionPointer();
@@ -31,8 +33,8 @@ namespace Pose.Helpers
             if (methodBase.IsStatic || obj == null)
                 return Array.FindIndex(PoseContext.Shims, s => s.Original == methodBase);
 
-            int index = Array.FindIndex(PoseContext.Shims,
-                s => Object.ReferenceEquals(obj, s.Instance) && s.Original == methodBase);
+            var index = Array.FindIndex(PoseContext.Shims,
+                s => ReferenceEquals(obj, s.Instance) && s.Original == methodBase);
 
             if (index == -1)
                 return Array.FindIndex(PoseContext.Shims,
@@ -44,16 +46,18 @@ namespace Pose.Helpers
         public static int GetIndexOfMatchingShim(MethodBase methodBase, object obj)
             => GetIndexOfMatchingShim(methodBase, methodBase.DeclaringType, obj);
 
-        public static MethodInfo DevirtualizeMethod(object obj, MethodInfo virtualMethod)
+        public static MethodInfo DeVirtualizeMethod(object obj, MethodInfo virtualMethod)
         {
-            return DevirtualizeMethod(obj.GetType(), virtualMethod);
+            return DeVirtualizeMethod(obj.GetType(), virtualMethod);
         }
 
-        public static MethodInfo DevirtualizeMethod(Type thisType, MethodInfo virtualMethod)
+        public static MethodInfo DeVirtualizeMethod(Type thisType, MethodInfo virtualMethod)
         {
             if (thisType == virtualMethod.DeclaringType) return virtualMethod;
-            BindingFlags bindingFlags = BindingFlags.Instance | (virtualMethod.IsPublic ? BindingFlags.Public : BindingFlags.NonPublic);
-            Type[] types = virtualMethod.GetParameters().Select(p => p.ParameterType).ToArray();
+            
+            var bindingFlags = BindingFlags.Instance | (virtualMethod.IsPublic ? BindingFlags.Public : BindingFlags.NonPublic);
+            var types = virtualMethod.GetParameters().Select(p => p.ParameterType).ToArray();
+            
             return thisType.GetMethod(virtualMethod.Name, bindingFlags, null, types, null);
         }
 
@@ -61,16 +65,25 @@ namespace Pose.Helpers
 
         public static bool IsIntrinsic(MethodBase method)
         {
-            return method.CustomAttributes.Any(ca => ca.AttributeType.FullName == "System.Runtime.CompilerServices.IntrinsicAttribute") ||
-                    method.DeclaringType.CustomAttributes.Any(ca => ca.AttributeType.FullName == "System.Runtime.CompilerServices.IntrinsicAttribute") ||
-                    method.DeclaringType.FullName.StartsWith("System.Runtime.Intrinsics");
+            var methodIsMarkedIntrinsic = method.CustomAttributes.Any(ca => ca.AttributeType.FullName == "System.Runtime.CompilerServices.IntrinsicAttribute");
+            
+            var declaringType = method.DeclaringType ?? throw new Exception($"Method {method.Name} does not have a {nameof(MethodBase.DeclaringType)}");
+            var declaringTypeIsMarkedIntrinsic = declaringType.CustomAttributes.Any(ca => ca.AttributeType.FullName == "System.Runtime.CompilerServices.IntrinsicAttribute");
+
+            var declaringTypeFullName = declaringType.FullName ?? throw new Exception($"Type {declaringType.Name} does not have a {nameof(Type.FullName)}");
+            var declaringTypeDerivesFromIntrinsic = declaringTypeFullName.StartsWith("System.Runtime.Intrinsics");
+            
+            return methodIsMarkedIntrinsic || declaringTypeIsMarkedIntrinsic || declaringTypeDerivesFromIntrinsic;
         }
 
         public static string CreateStubNameFromMethod(string prefix, MethodBase method)
         {
-            string name = prefix;
+            if (method == null) throw new ArgumentNullException(nameof(method));
+            if (string.IsNullOrWhiteSpace(prefix)) throw new ArgumentException("Value cannot be null or whitespace.", nameof(prefix));
+
+            var name = prefix;
             name += "_";
-            name += method.DeclaringType.ToString();
+            name += method.DeclaringType?.ToString() ?? throw new Exception($"Method {method.Name} does not have a {nameof(MethodBase.DeclaringType)}");
             name += "_";
             name += method.Name;
 
@@ -80,7 +93,11 @@ namespace Pose.Helpers
                 if (genericArguments.Length > 0)
                 {
                     name += "[";
+#if NETSTANDARD2_1_OR_GREATER
                     name += string.Join(',', genericArguments.Select(g => g.Name));
+#else
+                    name += string.Join(",", genericArguments.Select(g => g.Name));
+#endif
                     name += "]";
                 }
             }
@@ -91,14 +108,14 @@ namespace Pose.Helpers
         private static bool SignatureEquals(Shim shim, Type type, MethodBase method)
         {
             if (shim.Type == null || type == shim.Type)
-                return $"{shim.Type}::{shim.Original.ToString()}" == $"{type}::{method.ToString()}";
+                return $"{shim.Type}::{shim.Original}" == $"{type}::{method}";
 
             if (type.IsSubclassOf(shim.Type))
             {
                 if ((shim.Original.IsAbstract || !shim.Original.IsVirtual)
                         || (shim.Original.IsVirtual && !method.IsOverride()))
                 {
-                    return $"{shim.Original.ToString()}" == $"{method.ToString()}";
+                    return $"{shim.Original}" == $"{method}";
                 }
             }
 
