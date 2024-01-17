@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <!-- We are going to have quite a few EOL'd target frameworks here. -->
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
     <TargetFrameworks>netcoreapp2.0;netcoreapp3.0;net6.0;net7.0;net8.0</TargetFrameworks>
   </PropertyGroup>
 

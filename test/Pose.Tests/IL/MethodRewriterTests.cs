@@ -1,14 +1,15 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Emit;
-using FluentAssertions;
-using Pose.IL;
-using Xunit;
 // ReSharper disable PossibleNullReferenceException
 
 namespace Pose.Tests
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Reflection.Emit;
+    using FluentAssertions;
+    using IL;
+    using Xunit;
+    
     public class MethodRewriterTests
     {
         private class ClassWithStaticMethod
@@ -189,16 +190,8 @@ namespace Pose.Tests
             Action act = () => PoseContext.Isolate(
                 () =>
                 {
-                    try
-                    {
-                        // ReSharper disable once Xunit.XunitTestWithConsoleOutput
-                        Console.WriteLine("H");
-                        called = true;
-                    }
-                    catch (Exception e)
-                    {
-                        enteredCatchBlock = true;
-                    }
+                    try { called = true; }
+                    catch (Exception) { enteredCatchBlock = true; }
                 });
 
             act.Should().NotThrow();
