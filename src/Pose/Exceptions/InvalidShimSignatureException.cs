@@ -1,13 +1,17 @@
 namespace Pose.Exceptions
 {
-    [System.Serializable]
-    internal class InvalidShimSignatureException : System.Exception
+    using System;
+    using System.Runtime.Serialization;
+    
+    [Serializable]
+    internal class InvalidShimSignatureException : Exception
     {
         public InvalidShimSignatureException() { }
         public InvalidShimSignatureException(string message) : base(message) { }
-        public InvalidShimSignatureException(string message, System.Exception inner) : base(message, inner) { }
-        protected InvalidShimSignatureException(
-            System.Runtime.Serialization.SerializationInfo info,
-            System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+        public InvalidShimSignatureException(string message, Exception inner) : base(message, inner) { }
+        
+#if !NET8_0_OR_GREATER
+        protected InvalidShimSignatureException(SerializationInfo info, StreamingContext context) : base(info, context) { }
+#endif
     }
 }
