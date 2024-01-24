@@ -9,7 +9,7 @@ Pose is cross platform and runs anywhere .NET is supported. It targets .NET Stan
 
 ## Installation
 
-Available on [NuGet](https://www.nuget.org/packages/Pose/)
+Available on [NuGet](https://www.nuget.org/packages/Poser/)
 
 Visual Studio:
 
