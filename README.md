@@ -1,6 +1,6 @@
-[![Windows build status](https://ci.appveyor.com/api/projects/status/github/tonerdo/pose?branch=master&svg=true)](https://ci.appveyor.com/project/tonerdo/pose)
+[![Build status](https://dev.azure.com/palmund/Pose/_apis/build/status/Pose-CI?branchName=master)](https://dev.azure.com/palmund/Pose/_build/latest?definitionId=12)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![NuGet version](https://badge.fury.io/nu/Pose.svg)](https://www.nuget.org/packages/Pose)
+[![NuGet version](https://badge.fury.io/nu/Poser.svg)](https://www.nuget.org/packages/Poser)
 # Pose
 
 Pose allows you to replace any .NET method (including static and non-virtual) with a delegate. It is similar to [Microsoft Fakes](https://msdn.microsoft.com/en-us/library/hh549175.aspx) but unlike it Pose is implemented _entirely_ in managed code (Reflection Emit API). Everything occurs at runtime and in-memory, no unmanaged Profiling APIs and no file system pollution with re-written assemblies.
