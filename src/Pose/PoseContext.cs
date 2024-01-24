@@ -1,18 +1,61 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices.System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Pose;
 using Pose.IL;
 
-namespace System.Runtime.CompilerServices1
+namespace System.Runtime.CompilerServices
 {
+    /// <summary>Shared helpers for manipulating state related to async state machines.</summary>
+    // internal static class AsyncMethodBuilderCore // debugger depends on this exact name
+    // {
+    //     public static void Start<TStateMachine>(ref TStateMachine stateMachine) where TStateMachine : IAsyncStateMachine
+    //     {
+    //         if (stateMachine == null) // TStateMachines are generally non-nullable value types, so this check will be elided
+    //         {
+    //             //ThrowHelper.ThrowArgumentNullException(ExceptionArgument.stateMachine);
+    //         }
+    //
+    //         Thread currentThread = Thread.CurrentThread;
+    //
+    //         // Store current ExecutionContext and SynchronizationContext as "previousXxx".
+    //         // This allows us to restore them and undo any Context changes made in stateMachine.MoveNext
+    //         // so that they won't "leak" out of the first await.
+    //         ExecutionContext previousExecutionCtx = currentThread.ExecutionContext;
+    //         SynchronizationContext previousSyncCtx = null;
+    //
+    //         try
+    //         {
+    //             Console.WriteLine(stateMachine.GetType().GetMethods(BindingFlags.Instance | BindingFlags.NonPublic)[0]);
+    //             stateMachine.MoveNext();
+    //         }
+    //         finally
+    //         {
+    //         }
+    //     }
+    // }
+    
+    [StructLayout(LayoutKind.Sequential, Size = 1)]
+    internal readonly struct VoidTaskResult
+    {
+    }
+    
     // AsyncVoidMethodBuilder.cs in your project
     public class AsyncTaskMethodBuilder
     {
+        private Task<VoidTaskResult> m_task; // Debugger depends on the exact name of this field.
+        
         public void AwaitOnCompleted<TAwaiter, TStateMachine>(
             ref TAwaiter awaiter,
             ref TStateMachine stateMachine
@@ -20,7 +63,9 @@ namespace System.Runtime.CompilerServices1
             where TAwaiter : INotifyCompletion
             where TStateMachine : IAsyncStateMachine
         {
-            
+            var forwardingMethod = typeof(AsyncTaskMethodBuilder<VoidTaskResult>).GetMethod("AwaitOnCompleted",new []{typeof(TAwaiter), typeof(TStateMachine), typeof(Task<VoidTaskResult>)});
+            forwardingMethod.Invoke(null, new object[] { awaiter, stateMachine, m_task });
+            //AsyncTaskMethodBuilder<VoidTaskResult>.AwaitOnCompleted(ref awaiter, ref stateMachine, ref m_task);
         }
         
         public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(
@@ -31,11 +76,37 @@ namespace System.Runtime.CompilerServices1
             
         }
     
-        public void SetStateMachine(IAsyncStateMachine stateMachine) {}
+        public void SetStateMachine(IAsyncStateMachine stateMachine)
+        {
+            Console.WriteLine("SetStateMachine");
+        }
+    
+        public void SetException(Exception exception)
+        {
+            Console.WriteLine("SetException");
+        }
         
-        public void SetException(Exception exception) {}
-        
-        public Task Task => null;
+        public Task Task
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => m_task ?? InitializeTaskAsPromise();
+        }
+    
+        /// <summary>
+        /// Initializes the task, which must not yet be initialized.  Used only when the Task is being forced into
+        /// existence when no state machine is needed, e.g. when the builder is being synchronously completed with
+        /// an exception, when the builder is being used out of the context of an async method, etc.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private Task<VoidTaskResult> InitializeTaskAsPromise()
+        {
+            var task = typeof(Task<VoidTaskResult>)
+                .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic)
+                .OrderBy(c => c.GetParameters().Length)
+                .FirstOrDefault()
+                .Invoke(Type.EmptyTypes) as Task<VoidTaskResult>;
+            return m_task = task;
+        }
     
         public AsyncTaskMethodBuilder()
             => Console.WriteLine(".ctor");
@@ -43,18 +114,43 @@ namespace System.Runtime.CompilerServices1
         public static AsyncTaskMethodBuilder Create()
             => new AsyncTaskMethodBuilder();
     
-        public void SetResult() => Console.WriteLine("SetResult");
+        public void SetResult()
+        {
+            // Get the currently stored task, which will be non-null if get_Task has already been accessed.
+            // If there isn't one, store the supplied completed task.
+            if (m_task is null)
+            {
+                var methodInfos = typeof(Task).GetFields(BindingFlags.Static | BindingFlags.NonPublic);
+                Console.WriteLine(methodInfos.FirstOrDefault().Name);
+    
+                //m_task = Task.s_cachedCompleted;
+            }
+            else
+            {
+                // Otherwise, complete the task that's there.
+                var methodInfos = typeof(AsyncTaskMethodBuilder<VoidTaskResult>).GetMethods(BindingFlags.Static | BindingFlags.NonPublic);
+                Console.WriteLine(methodInfos.FirstOrDefault().Name);
+                //AsyncTaskMethodBuilder<VoidTaskResult>.SetExistingTaskResult(m_task, );
+            }
+    
+        }
     
         public void Start<TStateMachine>(ref TStateMachine stateMachine)
             where TStateMachine : IAsyncStateMachine
         {
             Console.WriteLine("Start");
+            var shims = PoseContext.Shims;
             var methodInfos = stateMachine.GetType().GetMethods(BindingFlags.Instance | BindingFlags.NonPublic);
             var methodInfo = methodInfos[0];
+            Console.WriteLine(methodInfo.Name);
             var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
-            var methodBase = methodRewriter.Rewrite();
-            methodBase.Invoke(this, new object[] { stateMachine });
-            stateMachine.MoveNext();
+            var methodBase = (MethodInfo) methodRewriter.Rewrite();
+            var makeGenericType = typeof(Action<>).MakeGenericType(stateMachine.GetType());
+            methodBase.CreateDelegate(makeGenericType).DynamicInvoke(stateMachine);
+            //methodBase.Invoke(stateMachine, new object[] { stateMachine });
+    
+            // methodBase.Invoke(this, new object[] { stateMachine });
+            //stateMachine.MoveNext();
         }
     
         // AwaitOnCompleted, AwaitUnsafeOnCompleted, SetException 
@@ -132,9 +228,9 @@ namespace Pose
                 return;
             }
 
-            var enumerable = new Shim[]{Shim.Replace(() => System.Runtime.CompilerServices.AsyncTaskMethodBuilder.Create())
-                .With(() => System.Runtime.CompilerServices1.AsyncTaskMethodBuilder.Create())};
-            Shims = shims.Concat(enumerable).ToArray();
+            //var enumerable = new Shim[]{Shim.Replace(() => System.Runtime.CompilerServices.AsyncTaskMethodBuilder.Create())
+            //    .With(() => System.Runtime.CompilerServices1.AsyncTaskMethodBuilder.Create())};
+            Shims = shims; //.Concat(enumerable).ToArray();
             StubCache = new Dictionary<MethodBase, DynamicMethod>();
 
             var delegateType = typeof(Action<>).MakeGenericType(entryPoint.Target.GetType());
@@ -146,13 +242,13 @@ namespace Pose
             methodInfo.CreateDelegate(delegateType).DynamicInvoke(entryPoint.Target);
         }
         
-        public static void IsolateAsync(Func<Task> entryPoint, params Shim[] shims)
+        public static async Task IsolateAsync(Func<Task> entryPoint, params Shim[] shims)
         {
-            if (shims == null || shims.Length == 0)
-            {
-                AsyncHelper.RunASync(entryPoint.Invoke);
-                return;
-            }
+            // if (shims == null || shims.Length == 0)
+            // {
+            //     AsyncHelper.RunASync(entryPoint.Invoke);
+            //     return;
+            // }
 
             Shims = shims;
             StubCache = new Dictionary<MethodBase, DynamicMethod>();
@@ -164,7 +260,14 @@ namespace Pose
 
             Console.WriteLine("----------------------------- Invoking ----------------------------- ");
             var @delegate = methodInfo.CreateDelegate(delegateType);
-            AsyncHelper.RunASync(() => @delegate.DynamicInvoke() as Task);
+            var x = @delegate.DynamicInvoke() as Task;
+
+            await x;
         }
     }
+}
+
+namespace System.Runtime.CompilerServices.System.Runtime.CompilerServices
+{
+    internal interface IAsyncStateMachineBox { }
 }

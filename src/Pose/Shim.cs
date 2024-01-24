@@ -46,7 +46,7 @@ namespace Pose
             }
         }
 
-        private Shim(MethodBase original, object instanceOrType)
+        public Shim(MethodBase original, object instanceOrType)
         {
             _original = original;
             if (instanceOrType is Type type)
@@ -67,7 +67,7 @@ namespace Pose
             return new Shim(methodBase, instance) { _setter = setter };
         }
 
-        private Shim WithImpl(Delegate replacement)
+        public Shim WithImpl(Delegate replacement)
         {
             _replacement = replacement;
             ShimHelper.ValidateReplacementMethodSignature(this._original, this._replacement.Method, _instance?.GetType() ?? _type, _setter);

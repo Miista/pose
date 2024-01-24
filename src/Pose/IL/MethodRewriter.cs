@@ -189,6 +189,174 @@ namespace Pose.IL
 #endif
             return dynamicMethod;
         }
+        
+        public MethodBase RewriteAsync()
+        {
+            var parameterTypes = new List<Type>();
+            if (!_method.IsStatic)
+            {
+                var thisType = _isInterfaceDispatch ? typeof(object) : _owningType;
+                if (!_isInterfaceDispatch && _owningType.IsValueType)
+                {
+                    thisType = thisType.MakeByRefType();
+                }
+
+                parameterTypes.Add(thisType);
+            }
+
+            parameterTypes.AddRange(_method.GetParameters().Select(p => p.ParameterType));
+            var returnType = _method.IsConstructor ? typeof(void) : (_method as MethodInfo).ReturnType;
+
+            var dynamicMethod = new DynamicMethod(
+                StubHelper.CreateStubNameFromMethod("impl", _method),
+                returnType,
+                parameterTypes.ToArray(),
+                StubHelper.GetOwningModule(),
+                true);
+
+            var methodBody = _method.GetMethodBody() ?? throw new MethodRewriteException($"Method {_method.Name} does not have a body");
+            var locals = methodBody.LocalVariables;
+            var targetInstructions = new Dictionary<int, Label>();
+            var handlers = new List<ExceptionHandler>();
+
+            var ilGenerator = dynamicMethod.GetILGenerator();
+            var instructions = _method.GetInstructions();
+
+            foreach (var clause in methodBody.ExceptionHandlingClauses)
+            {
+                var handler = new ExceptionHandler
+                {
+                    Flags = clause.Flags,
+                    CatchType = clause.Flags == ExceptionHandlingClauseOptions.Clause ? clause.CatchType : null,
+                    TryStart = clause.TryOffset,
+                    TryEnd = clause.TryOffset + clause.TryLength,
+                    FilterStart = clause.Flags == ExceptionHandlingClauseOptions.Filter ? clause.FilterOffset : -1,
+                    HandlerStart = clause.HandlerOffset,
+                    HandlerEnd = clause.HandlerOffset + clause.HandlerLength
+                };
+                handlers.Add(handler);
+            }
+
+            foreach (var local in locals)
+            {
+                ilGenerator.DeclareLocal(local.LocalType, local.IsPinned);
+            }
+
+            var ifTargets = instructions
+                .Where(i => i.Operand is Instruction)
+                .Select(i => i.Operand as Instruction);
+
+            foreach (var ifInstruction in ifTargets)
+            {
+                if (ifInstruction == null) throw new Exception("The impossible happened");
+                
+                targetInstructions.TryAdd(ifInstruction.Offset, ilGenerator.DefineLabel());
+            }
+
+            var switchTargets = instructions
+                .Where(i => i.Operand is Instruction[])
+                .Select(i => i.Operand as Instruction[]);
+
+            foreach (var switchInstructions in switchTargets)
+            {
+                if (switchInstructions == null) throw new Exception("The impossible happened");
+                
+                foreach (var instruction in switchInstructions)
+                    targetInstructions.TryAdd(instruction.Offset, ilGenerator.DefineLabel());
+            }
+
+#if DEBUG
+            Console.WriteLine("\n" + _method);
+#endif
+
+            foreach (var instruction in instructions)
+            {
+#if DEBUG
+                Console.WriteLine(instruction);
+#endif
+
+                EmitILForExceptionHandlers(ilGenerator, instruction, handlers);
+
+                if (targetInstructions.TryGetValue(instruction.Offset, out var label))
+                    ilGenerator.MarkLabel(label);
+
+                if (IgnoredOpCodes.Contains(instruction.OpCode)) continue;
+
+//                 if ((instruction.Operand as MethodInfo)?.Name == "MoveNext")
+//                 {
+//                     ilGenerator.Emit(OpCodes.Callvirt, typeof(Object).GetMethod(nameof(Object.GetType)));
+//                     ilGenerator.Emit(OpCodes.Ldc_I4_S, 36);
+//                     ilGenerator.Emit(OpCodes.Callvirt, typeof(Type).GetMethod(nameof(Type.GetMethods), new[] { typeof(BindingFlags) }));
+//                     ilGenerator.Emit(OpCodes.Ldc_I4_0);
+//                     ilGenerator.Emit(OpCodes.Ldelem_Ref);
+//                     ilGenerator.Emit(OpCodes.Call, typeof(Console).GetMethod(nameof(Console.WriteLine), new[] { typeof(object) }));
+//                     ilGenerator.Emit(OpCodes.Nop);
+//                     ilGenerator.Emit(OpCodes.Ldarg_0);
+//
+//                     EmitILForInlineMember(ilGenerator, instruction.Previous);
+//
+// //                    ilGenerator.Emit(OpCodes.Ret);
+//                     // Rewrite MoveNext
+//
+//                 }
+                
+                switch (instruction.OpCode.OperandType)
+                {
+                    case OperandType.InlineNone:
+                        EmitILForInlineNone(ilGenerator, instruction);
+                        break;
+                    case OperandType.InlineI:
+                        EmitILForInlineI(ilGenerator, instruction);
+                        break;
+                    case OperandType.InlineI8:
+                        EmitILForInlineI8(ilGenerator, instruction);
+                        break;
+                    case OperandType.ShortInlineI:
+                        EmitILForShortInlineI(ilGenerator, instruction);
+                        break;
+                    case OperandType.InlineR:
+                        EmitILForInlineR(ilGenerator, instruction);
+                        break;
+                    case OperandType.ShortInlineR:
+                        EmitILForShortInlineR(ilGenerator, instruction);
+                        break;
+                    case OperandType.InlineString:
+                        EmitILForInlineString(ilGenerator, instruction);
+                        break;
+                    case OperandType.ShortInlineBrTarget:
+                    case OperandType.InlineBrTarget:
+                        EmitILForInlineBrTarget(ilGenerator, instruction, targetInstructions);
+                        break;
+                    case OperandType.InlineSwitch:
+                        EmitILForInlineSwitch(ilGenerator, instruction, targetInstructions);
+                        break;
+                    case OperandType.ShortInlineVar:
+                    case OperandType.InlineVar:
+                        EmitILForInlineVar(ilGenerator, instruction);
+                        break;
+                    case OperandType.InlineTok:
+                    case OperandType.InlineType:
+                    case OperandType.InlineField:
+                    case OperandType.InlineMethod:
+                        EmitILForInlineMember(ilGenerator, instruction);
+                        break;
+                    default:
+                        throw new NotSupportedException(instruction.OpCode.OperandType.ToString());
+                }
+            }
+
+#if DEBUG
+            var ilBytes = ilGenerator.GetILBytes();
+            var browsableDynamicMethod = new BrowsableDynamicMethod(dynamicMethod, new DynamicMethodBody(ilBytes, locals));
+            Console.WriteLine("\n" + dynamicMethod);
+
+            foreach (var instruction in browsableDynamicMethod.GetInstructions())
+            {
+                Console.WriteLine(instruction);
+            }
+#endif
+            return dynamicMethod;
+        }
 
         private void EmitILForExceptionHandlers(ILGenerator ilGenerator, Instruction instruction, IReadOnlyCollection<ExceptionHandler> handlers)
         {
@@ -362,6 +530,8 @@ namespace Pose.IL
         {
             var declaringType = member.DeclaringType ?? throw new Exception($"Type {member.Name} does not have a {nameof(MethodBase.DeclaringType)}");
 
+            // if (declaringType.Name == "AsyncMethodBuilderCore") return false;
+
             // Don't attempt to rewrite inaccessible constructors in System.Private.CoreLib/mscorlib
             if (!declaringType.IsPublic) return true;
             if (!member.IsPublic && !member.IsFamily && !member.IsFamilyOrAssembly) return true;
@@ -408,14 +578,22 @@ namespace Pose.IL
 
         private void EmitILForMethod(ILGenerator ilGenerator, Instruction instruction, MethodInfo methodInfo)
         {
-            if (methodInfo.InCoreLibrary())
+            if (methodInfo.InCoreLibrary() || methodInfo.DeclaringType.Name == "AsyncTaskMethodBuilder")
             {
+                if (methodInfo.DeclaringType.Name == "AsyncTaskMethodBuilder") goto forward;
+                
                 // Don't attempt to rewrite inaccessible methods in System.Private.CoreLib/mscorlib
                 if (ShouldForward(methodInfo)) goto forward;
             }
 
             if (instruction.OpCode == OpCodes.Call)
             {
+                // if (methodInfo.DeclaringType?.FullName == "System.Runtime.CompilerServices.AsyncMethodBuilderCore")
+                // {
+                //     ilGenerator.Emit(OpCodes.Call, Stubs.GenerateStubForAsyncCall(methodInfo));
+                //     return;
+                // }
+                
                 ilGenerator.Emit(OpCodes.Call, Stubs.GenerateStubForDirectCall(methodInfo));
                 return;
             }

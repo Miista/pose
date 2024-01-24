@@ -1,8 +1,11 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
+using Pose.IL;
 
 namespace Pose.Sandbox
 {
@@ -75,11 +78,22 @@ namespace Pose.Sandbox
         public static void Main(string[] args)
         {
             //Lol().GetAwaiter().GetResult();
-            
+            // var i = 0;
+            // var type = i.GetType();
+            // MethodBase methodBase = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)[0];
+            // Console.WriteLine(methodBase.DeclaringType.Name);
+            // var methodRewriter = MethodRewriter.CreateRewriter(methodBase, false);
+            // var method = (MethodInfo)methodRewriter.Rewrite();
+            // var returnTypeName = method.ReturnType.Name;
+            // var @delegate = method.CreateDelegate(typeof(void));
+            //methodBase.Invoke(methodBase, new object[] { methodBase });
+            //Console.WriteLine(type);
             var shim = Shim
                 .Replace(() => Program.GetAsyncInt())
                 .With(() => Task.FromResult(2));
 
+            //var startMethod = typeof(Exception).Assembly.GetTypes().Where(t => t.Name.Contains("AsyncMethodBuilderCore")).FirstOrDefault().GetMethods(BindingFlags.Static | BindingFlags.NonPublic).Where(m => m.Name.Contains("Start")).FirstOrDefault();
+            //new Shim(startMethod, null).With()
             PoseContext.Shims = new Shim[] { shim };
             
             // var shim1 = Shim
@@ -91,7 +105,7 @@ namespace Pose.Sandbox
                 {
                     var @int = await GetAsyncInt();
                     Console.WriteLine(@int);
-                }, shim);
+                });
             /*
 #if NET48
             Console.WriteLine("4.8");
