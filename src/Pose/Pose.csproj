@@ -1,17 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Title>Pose</Title>
-    <Description>Replace any .NET method (including static and non-virtual) with a delegate</Description>
-    <PackageVersion>1.2.1</PackageVersion>
     <TargetFrameworks>netstandard2.0;netcoreapp2.0;netcoreapp3.0;net48;net7.0;net8.0</TargetFrameworks>
     <DebugType>portable</DebugType>
     <AssemblyName>Pose</AssemblyName>
-    <PackageId>Pose</PackageId>
-    <PackageTags>pose;mocking;testing;unit-test;isolation-framework;test-framework</PackageTags>
-    <PackageProjectUrl>https://github.com/tonerdo/pose</PackageProjectUrl>
-    <PackageLicenseUrl>https://github.com/tonerdo/pose/blob/master/LICENSE</PackageLicenseUrl>
-    <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/tonerdo/pose</RepositoryUrl>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Mono.Reflection.Core" Version="1.1.1" />

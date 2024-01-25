@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>Poser</id>
+    <version>2.0.0</version>
+    <title>Pose</title>
+    <authors>Søren Guldmund</authors>
+    <owners>Søren Guldmund</owners>
+    <projectUrl>https://github.com/Miista/Pose</projectUrl>
+    <repository type="git" url="https://github.com/Miista/Pose.git" />
+    <license type="expression">MIT</license>
+<!--    <licenseUrl>https://github.com/Miista/pose/blob/master/LICENSE</licenseUrl>-->
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <tags>pose;mocking;testing;unit-test;isolation-framework;test-framework</tags>
+    <description>Replace any .NET method (including static and non-virtual) with a delegate</description>
+    <copyright>Copyright 2024</copyright>
+	  <readme>docs\README.md</readme>
+    <releaseNotes>
+      Provide better exception message when we cannot create instance.
+	  </releaseNotes>
+
+    <dependencies>
+      <dependency id="Mono.Reflection.Core" version="1.1.1" />
+      <dependency id="System.Reflection.Emit.Lightweight" version="4.3.0" />
+      <dependency id="System.Runtime.CompilerServices.Unsafe" version="5.0.0" />
+    </dependencies>
+  </metadata>
+
+  <files>
+    <!-- .NET Standard 2.0 -->
+    <file src="netstandard2.0\*.dll" target="lib\netstandard2.0" />
+    <file src="netstandard2.0\*.xml" target="lib\netstandard2.0" />
+
+    <!-- .NET Core 2.0 -->
+    <file src="netcoreapp2.0\*.dll" target="lib\netcoreapp2.0" />
+    <file src="netcoreapp2.0\*.xml" target="lib\netcoreapp2.0" />
+
+    <!-- .NET Core 3.0 -->
+    <file src="netcoreapp3.0\*.dll" target="lib\netcoreapp3.0" />
+    <file src="netcoreapp3.0\*.xml" target="lib\netcoreapp3.0" />
+
+    <!-- .NET Framework 4.8 -->
+    <file src="net48\*.dll" target="lib\net48" />
+    <file src="net48\*.xml" target="lib\net48" />
+
+    <!-- .NET 7 -->
+    <file src="net7.0\*.dll" target="lib\net7.0" />
+    <file src="net7.0\*.xml" target="lib\net7.0" />
+
+    <!-- .NET 8 -->
+    <file src="net8.0\*.dll" target="lib\net8.0" />
+    <file src="net8.0\*.xml" target="lib\net8.0" />
+    
+	  <file src="..\..\..\..\README.md" target="docs\" />
+  </files>
+</package>
