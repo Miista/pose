@@ -1,11 +1,18 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System;
+using System.Threading.Tasks;
 
 namespace Pose.Sandbox
 {
     public class Program
     {
+        public static async Task<int> GetIntAsync()
+        {
+            Console.WriteLine("Here");
+            return await Task.FromResult(1);
+        }
+
         public static void Main(string[] args)
         {
 #if NET48
@@ -19,11 +26,14 @@ namespace Pose.Sandbox
 #elif NETCOREAPP2_0
             Console.WriteLine("2.0");
             var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
+            var asyncShim = Shim.Replace(() => GetIntAsync()).With(() => Task.FromResult(10));
             PoseContext.Isolate(
                 () =>
                 {
-                    Console.WriteLine(DateTime.Now);
-                }, dateTimeShim);
+                    var result = GetIntAsync().GetAwaiter().GetResult();
+                    Console.WriteLine($"Result: {result}");
+                    //Console.WriteLine(DateTime.Now);
+                }, dateTimeShim, asyncShim);
 #elif NET6_0
             Console.WriteLine("6.0");
             var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
