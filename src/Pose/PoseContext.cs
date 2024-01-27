@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Threading.Tasks;
 using Pose.IL;
 
 namespace Pose
@@ -29,6 +30,28 @@ namespace Pose
 
             Console.WriteLine("----------------------------- Invoking ----------------------------- ");
             methodInfo.CreateDelegate(delegateType).DynamicInvoke(entryPoint.Target);
+        }
+        
+        public static async Task Isolate(Func<Task> entryPoint, params Shim[] shims)
+        {
+            if (shims == null || shims.Length == 0)
+            {
+                await entryPoint.Invoke();
+                return;
+            }
+
+            Shims = shims;
+            StubCache = new Dictionary<MethodBase, DynamicMethod>();
+
+            var delegateType = typeof(Func<Task>);
+            var rewriter = MethodRewriter.CreateRewriter(entryPoint.Method, false);
+            Console.WriteLine("----------------------------- Rewriting ----------------------------- ");
+            var methodInfo = (MethodInfo)(rewriter.Rewrite());
+
+            Console.WriteLine("----------------------------- Invoking ----------------------------- ");
+            
+            // ReSharper disable once PossibleNullReferenceException
+            await (methodInfo.CreateDelegate(delegateType).DynamicInvoke() as Task);
         }
     }
 }

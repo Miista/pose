@@ -63,7 +63,8 @@ namespace Pose
 
         private static Shim ReplaceImpl<T>(Expression<T> expression, bool setter)
         {
-            // TODO: Figure out if method is an async method. Do that by finding the attribute on the method which designates the state machine
+            // We could find out whether the method is an async method by checking whether it has the AsyncStateMachineAttribute.
+            // However, it seems that this is not necessary.
             var methodBase = ShimHelper.GetMethodFromExpression(expression.Body, setter, out var instance);
             return new Shim(methodBase, instance) { _setter = setter };
         }
