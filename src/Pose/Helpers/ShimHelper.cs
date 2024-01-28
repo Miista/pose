@@ -43,11 +43,23 @@ namespace Pose.Helpers
                 case ExpressionType.Add:
                 case ExpressionType.Subtract:
                 case ExpressionType.Multiply:
+                case ExpressionType.Divide:
+                case ExpressionType.LeftShift:
+                case ExpressionType.RightShift:
+                case ExpressionType.Modulo:
+                case ExpressionType.ExclusiveOr:
+                case ExpressionType.And:
+                case ExpressionType.Equal:
+                case ExpressionType.NotEqual:
+                case ExpressionType.LessThan:
+                case ExpressionType.GreaterThan:
+                case ExpressionType.LessThanOrEqual:
+                case ExpressionType.GreaterThanOrEqual:
                     var binaryExpression = expression as BinaryExpression ?? throw new Exception($"Cannot cast expression to {nameof(BinaryExpression)}");
                     instanceOrType = null;
                     return binaryExpression.Method;
                 default:
-                    throw new NotImplementedException("Unsupported expression");
+                    throw new UnsupportedExpressionException($"Expression (of type {expression.GetType()}) with NodeType '{expression.NodeType}' is not supported");
             }
         }
 
