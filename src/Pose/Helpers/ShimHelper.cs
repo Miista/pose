@@ -36,6 +36,10 @@ namespace Pose.Helpers
                     var newExpression = expression as NewExpression ?? throw new Exception($"Cannot cast expression to {nameof(NewExpression)}");
                     instanceOrType = null;
                     return newExpression.Constructor;
+                case ExpressionType.Convert:
+                    var unaryExpression = expression as UnaryExpression ?? throw new Exception($"Cannot cast expression to {nameof(UnaryExpression)}");
+                    instanceOrType = null;
+                    return unaryExpression.Method;
                 default:
                     throw new NotImplementedException("Unsupported expression");
             }

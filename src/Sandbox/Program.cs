@@ -6,6 +6,11 @@ namespace Pose.Sandbox
 {
     public class Program
     {
+        public class OverridenOperatorClass
+        {
+            public static explicit operator bool(OverridenOperatorClass c) => false;
+        }
+        
         public static void Main(string[] args)
         {
 #if NET48
@@ -18,12 +23,19 @@ namespace Pose.Sandbox
                 }, dateTimeShim);
 #elif NETCOREAPP2_0
             Console.WriteLine("2.0");
-            var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
+
+            var sut1 = new OverridenOperatorClass();
+            var operatorShim = Shim.Replace(() => (bool) sut1)
+                .With(delegate (OverridenOperatorClass c) { return true; });
+
             PoseContext.Isolate(
                 () =>
                 {
-                    Console.WriteLine(DateTime.Now);
-                }, dateTimeShim);
+                    var sut = new OverridenOperatorClass();
+                    Console.WriteLine($"Result: {(bool)sut}");
+                    Console.WriteLine($"Result: {(bool)sut1}");
+                }, operatorShim
+            );
 #elif NET6_0
             Console.WriteLine("6.0");
             var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
