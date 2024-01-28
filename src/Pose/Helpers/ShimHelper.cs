@@ -40,6 +40,12 @@ namespace Pose.Helpers
                     var unaryExpression = expression as UnaryExpression ?? throw new Exception($"Cannot cast expression to {nameof(UnaryExpression)}");
                     instanceOrType = null;
                     return unaryExpression.Method;
+                case ExpressionType.Add:
+                case ExpressionType.Subtract:
+                case ExpressionType.Multiply:
+                    var binaryExpression = expression as BinaryExpression ?? throw new Exception($"Cannot cast expression to {nameof(BinaryExpression)}");
+                    instanceOrType = null;
+                    return binaryExpression.Method;
                 default:
                     throw new NotImplementedException("Unsupported expression");
             }

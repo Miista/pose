@@ -27,14 +27,25 @@ namespace Pose.Sandbox
             var sut1 = new OverridenOperatorClass();
             var operatorShim = Shim.Replace(() => (bool) sut1)
                 .With(delegate (OverridenOperatorClass c) { return true; });
+            var dateTimeAddShim = Shim.Replace(() => Is.A<DateTime>() + Is.A<TimeSpan>())
+                .With(delegate(DateTime dt, TimeSpan ts) { return new DateTime(2004, 01, 01); });
+            var dateTimeSubtractShim = Shim.Replace(() => Is.A<DateTime>() - Is.A<TimeSpan>())
+                .With(delegate(DateTime dt, TimeSpan ts) { return new DateTime(1990, 01, 01); });
 
             PoseContext.Isolate(
                 () =>
                 {
-                    var sut = new OverridenOperatorClass();
-                    Console.WriteLine($"Result: {(bool)sut}");
-                    Console.WriteLine($"Result: {(bool)sut1}");
-                }, operatorShim
+                    var dateTime = DateTime.Now;
+                    Console.WriteLine($"Date: {dateTime}");
+                    var ts = TimeSpan.FromSeconds(1);
+                    Console.WriteLine($"Time: {ts}");
+
+                    var time = dateTime + ts;
+                    Console.WriteLine($"Result1: {time}");
+
+                    var time2 = dateTime - ts;
+                    Console.WriteLine($"Result2: {time2}");
+                }, dateTimeAddShim, dateTimeSubtractShim
             );
 #elif NET6_0
             Console.WriteLine("6.0");
