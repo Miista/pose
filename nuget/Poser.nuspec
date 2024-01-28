@@ -2,21 +2,20 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Poser</id>
-    <version>2.0.0</version>
+    <version>2.1.0-alpha0001</version>
     <title>Pose</title>
     <authors>Søren Guldmund</authors>
     <owners>Søren Guldmund</owners>
     <projectUrl>https://github.com/Miista/Pose</projectUrl>
     <repository type="git" url="https://github.com/Miista/Pose.git" />
     <license type="expression">MIT</license>
-<!--    <licenseUrl>https://github.com/Miista/pose/blob/master/LICENSE</licenseUrl>-->
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <tags>pose;mocking;testing;unit-test;isolation-framework;test-framework</tags>
     <description>Replace any .NET method (including static and non-virtual) with a delegate</description>
     <copyright>Copyright 2024</copyright>
 	  <readme>docs\README.md</readme>
     <releaseNotes>
-      Provide better exception message when we cannot create instance.
+      Add support for async methods.
 	  </releaseNotes>
 
     <dependencies>
