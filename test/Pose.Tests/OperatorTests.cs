@@ -11,7 +11,12 @@ namespace Pose.Tests
             public string Value { get; set; }
             
             public static OperatorsClass operator +(OperatorsClass l, OperatorsClass r) => null;
+            public static OperatorsClass operator +(OperatorsClass l) => null;
+            public static OperatorsClass operator ++(OperatorsClass l) => null;
             public static OperatorsClass operator -(OperatorsClass l, OperatorsClass r) => null;
+            public static OperatorsClass operator -(OperatorsClass l) => null;
+            public static OperatorsClass operator --(OperatorsClass l) => null;
+            public static OperatorsClass operator ~(OperatorsClass l) => null;
             public static OperatorsClass operator *(OperatorsClass l, OperatorsClass r) => null;
             public static OperatorsClass operator /(OperatorsClass l, OperatorsClass r) => null;
             public static OperatorsClass operator %(OperatorsClass l, OperatorsClass r) => null;
@@ -26,6 +31,8 @@ namespace Pose.Tests
             public static bool? operator >(OperatorsClass l, OperatorsClass r) => null;
             public static bool? operator <=(OperatorsClass l, OperatorsClass r) => null;
             public static bool? operator >=(OperatorsClass l, OperatorsClass r) => null;
+            public static bool operator true(OperatorsClass l) => false;
+            public static bool operator false(OperatorsClass r) => true;
         }
 
         public class Arithmetic
@@ -209,6 +216,121 @@ namespace Pose.Tests
                         var right = new OperatorsClass();
 
                         result = left % right;
+                    }, shim);
+                
+                // Assert
+                result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
+                result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+            }
+            
+            [Fact]
+            public void Can_shim_bitwise_complement_operator()
+            {
+                // Arrange
+                var shimmedValue = new OperatorsClass { Value = "Hello, World" };
+                var shim = Shim.Replace(() => ~Is.A<OperatorsClass>())
+                    .With(delegate(OperatorsClass l) { return shimmedValue; });
+
+                // Act
+                var result = default(OperatorsClass);
+                PoseContext.Isolate(
+                    () =>
+                    {
+                        var sut = new OperatorsClass();
+
+                        result = ~sut;
+                    }, shim);
+                
+                // Assert
+                result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
+                result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+            }
+            
+            [Fact(Skip = "How to get the operator method from expression?")]
+            public void Can_shim_true_operator()
+            {
+                // Arrange
+                var shimmedValue = new OperatorsClass { Value = "Hello, World" };
+                var shim = Shim.Replace(() => ~Is.A<OperatorsClass>())
+                    .With(delegate(OperatorsClass l) { return shimmedValue; });
+
+                // Act
+                var result = default(OperatorsClass);
+                PoseContext.Isolate(
+                    () =>
+                    {
+                        var sut = new OperatorsClass();
+
+                        result = sut ? shimmedValue : null;
+                    }, shim);
+                
+                // Assert
+                result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
+                result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+            }
+            
+            [Fact]
+            public void Can_shim_logical_negation_operator()
+            {
+                // Arrange
+                var shimmedValue = new OperatorsClass { Value = "Hello, World" };
+                var shim = Shim.Replace(() => ~Is.A<OperatorsClass>())
+                    .With(delegate(OperatorsClass l) { return shimmedValue; });
+
+                // Act
+                var result = default(OperatorsClass);
+                PoseContext.Isolate(
+                    () =>
+                    {
+                        var sut = new OperatorsClass();
+
+                        result = ~sut;
+                    }, shim);
+                
+                // Assert
+                result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
+                result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+            }
+            
+            [Fact]
+            public void Can_shim_unary_plus_operator()
+            {
+                // Arrange
+                var shimmedValue = new OperatorsClass { Value = "Hello, World" };
+                var shim = Shim.Replace(() => +Is.A<OperatorsClass>())
+                    .With(delegate(OperatorsClass l) { return shimmedValue; });
+
+                // Act
+                var result = default(OperatorsClass);
+                PoseContext.Isolate(
+                    () =>
+                    {
+                        var sut = new OperatorsClass();
+
+                        result = +sut;
+                    }, shim);
+                
+                // Assert
+                result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
+                result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+            }
+            
+            [Fact]
+            public void Can_shim_unary_minus_operator()
+            {
+                // Arrange
+                var shimmedValue = new OperatorsClass { Value = "Hello, World" };
+                var shim = Shim.Replace(() => -Is.A<OperatorsClass>())
+                    .With(delegate(OperatorsClass l) { return shimmedValue; });
+
+                // Act
+                var result = default(OperatorsClass);
+                PoseContext.Isolate(
+                    () =>
+                    {
+                        var sut = new OperatorsClass();
+
+                        result = -sut;
                     }, shim);
                 
                 // Assert
