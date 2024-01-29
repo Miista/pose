@@ -25,10 +25,14 @@ namespace Pose
 
             var delegateType = typeof(Action<>).MakeGenericType(entryPoint.Target.GetType());
             var rewriter = MethodRewriter.CreateRewriter(entryPoint.Method, false);
+#if TRACE
             Console.WriteLine("----------------------------- Rewriting ----------------------------- ");
+#endif
             var methodInfo = (MethodInfo)(rewriter.Rewrite());
 
+#if TRACE
             Console.WriteLine("----------------------------- Invoking ----------------------------- ");
+#endif
             methodInfo.CreateDelegate(delegateType).DynamicInvoke(entryPoint.Target);
         }
         
@@ -45,10 +49,14 @@ namespace Pose
 
             var delegateType = typeof(Func<Task>);
             var rewriter = MethodRewriter.CreateRewriter(entryPoint.Method, false);
+#if TRACE
             Console.WriteLine("----------------------------- Rewriting ----------------------------- ");
+#endif
             var methodInfo = (MethodInfo)(rewriter.Rewrite());
 
+#if TRACE
             Console.WriteLine("----------------------------- Invoking ----------------------------- ");
+#endif
             
             // ReSharper disable once PossibleNullReferenceException
             await (methodInfo.CreateDelegate(delegateType).DynamicInvoke() as Task);

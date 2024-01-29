@@ -83,7 +83,9 @@ namespace Pose.IL
                 StubHelper.GetOwningModule(),
                 true);
 
+#if TRACE
             Console.WriteLine("\n" + method);
+#endif
             
             var ilGenerator = stub.GetILGenerator();
 
@@ -280,7 +282,9 @@ namespace Pose.IL
                 StubHelper.GetOwningModule(),
                 true);
 
+#if TRACE
             Console.WriteLine("\n" + method);
+#endif
 
             var ilGenerator = stub.GetILGenerator();
 
