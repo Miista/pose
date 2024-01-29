@@ -9,6 +9,8 @@ namespace Pose.Sandbox
         public class OverridenOperatorClass
         {
             public static explicit operator bool(OverridenOperatorClass c) => false;
+
+            public static implicit operator int(OverridenOperatorClass c) => int.MinValue;
         }
         
         public static void Main(string[] args)
@@ -25,6 +27,7 @@ namespace Pose.Sandbox
             Console.WriteLine("2.0");
 
             var sut1 = new OverridenOperatorClass();
+            int s = sut1;
             var operatorShim = Shim.Replace(() => (bool) sut1)
                 .With(delegate (OverridenOperatorClass c) { return true; });
             var dateTimeAddShim = Shim.Replace(() => Is.A<DateTime>() + Is.A<TimeSpan>())
