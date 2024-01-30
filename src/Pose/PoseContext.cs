@@ -59,7 +59,8 @@ namespace Pose
 #endif
             
             // ReSharper disable once PossibleNullReferenceException
-            await (methodInfo.CreateDelegate(delegateType).DynamicInvoke() as Task);
+            var task = methodInfo.CreateDelegate(delegateType).DynamicInvoke() as Task;
+            await task;
         }
     }
 }

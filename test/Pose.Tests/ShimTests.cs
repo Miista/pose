@@ -793,6 +793,62 @@ namespace Pose.Tests
 
         public class AsyncMethods
         {
+            public class General
+            {
+                private class MyClass
+                {
+                    public async Task DoSomethingAsync() => await Task.CompletedTask;
+                }
+
+                [Fact]
+                public void Can_replace_async_instance_method_for_specific_instance()
+                {
+                    // Arrange
+                    var myClass = new MyClass();
+                    var shim = Shim.Replace(() => myClass.DoSomethingAsync());
+                    
+                    // Act
+                    Action act = () =>
+                    {
+                        shim
+                            .With(
+                                delegate (MyClass @this)
+                                {
+                                    Console.WriteLine("LOL");
+                                    return Task.CompletedTask;
+                                }
+                            );
+                    };
+
+                    // Assert
+                    act.Should().NotThrow(because: "the async method can be replaced");
+                }
+                
+                [Fact]
+                public void Can_replace_async_instance_method_for_specific_instance_with_async_delegate()
+                {
+                    // Arrange
+                    var myClass = new MyClass();
+                    var shim = Shim.Replace(() => myClass.DoSomethingAsync());
+                    
+                    // Act
+                    Action act = () =>
+                    {
+                        shim
+                            .With(
+                                delegate (MyClass @this)
+                                {
+                                    Console.WriteLine("LOL");
+                                    return Task.CompletedTask;
+                                }
+                            );
+                    };
+
+                    // Assert
+                    act.Should().NotThrow(because: "the async method can be replaced");
+                }
+            }
+            
             public class StaticTypes
             {
                 private class Instance

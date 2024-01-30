@@ -6,8 +6,8 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>false</DebugSymbols>
-    <DebugType>none</DebugType>
-    <DefineConstants />
+    <DebugType>full</DebugType>
+    <DefineConstants/>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Mono.Reflection.Core" Version="1.1.1" />
