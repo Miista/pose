@@ -115,6 +115,31 @@ Shim structShim = Shim.Replace(() => Is.A<MyStruct>().DoSomething()).With(
 
 _Note: You cannot shim methods on specific instances of Value Types_
 
+### Isolating your code
+
+```csharp
+// This block executes immediately
+PoseContext.Isolate(() =>
+{
+    // All code that executes within this block
+    // is isolated and shimmed methods are replaced
+
+    // Outputs "Hijacked: Hello World!"
+    Console.WriteLine("Hello World!");
+
+    // Outputs "4/4/04 12:00:00 AM"
+    Console.WriteLine(DateTime.Now);
+
+    // Outputs "doing someting else"
+    new MyClass().DoSomething();
+
+    // Outputs "doing someting else with myClass"
+    myClass.DoSomething();
+
+}, consoleShim, dateTimeShim, classPropShim, classShim, myClassShim, structShim);
+```
+
+## Async usage
 ### Shim static async method
 ```csharp
 using Pose;
@@ -126,6 +151,7 @@ Shim staticTaskShim = Shim.Replace(() => DoWorkAsync()).With(
         return Task.CompletedTask;
     });
 ```
+
 ### Shim async instance method of a Reference Type
 ```csharp
 using Pose;
@@ -153,32 +179,8 @@ Shim myClassTaskShim = Shim.Replace(() => myClass.DoSomethingAsync()).With(
     });
 ```
 
-### Isolating your code
+### Isolating your async code
 
-#### Non-async
-```csharp
-// This block executes immediately
-PoseContext.Isolate(() =>
-{
-    // All code that executes within this block
-    // is isolated and shimmed methods are replaced
-
-    // Outputs "Hijacked: Hello World!"
-    Console.WriteLine("Hello World!");
-
-    // Outputs "4/4/04 12:00:00 AM"
-    Console.WriteLine(DateTime.Now);
-
-    // Outputs "doing someting else"
-    new MyClass().DoSomething();
-
-    // Outputs "doing someting else with myClass"
-    myClass.DoSomething();
-
-}, consoleShim, dateTimeShim, classPropShim, classShim, myClassShim, structShim);
-```
-
-#### Async
 ```csharp
 // This block executes immediately
 await PoseContext.Isolate(async () =>
