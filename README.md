@@ -1,6 +1,8 @@
-[![Build status](https://dev.azure.com/palmund/Pose/_apis/build/status/Pose-CI?branchName=master)](https://dev.azure.com/palmund/Pose/_build/latest?definitionId=12)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![NuGet version](https://badge.fury.io/nu/Poser.svg)](https://www.nuget.org/packages/Poser)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Build status](https://dev.azure.com/palmund/Pose/_apis/build/status/Pose-CI?branchName=master&Label=build)](https://dev.azure.com/palmund/Pose/_build/latest?definitionId=12)
+[![NuGet version](https://img.shields.io/nuget/v/Poser?logo=nuget)](https://www.nuget.org/packages/Poser)
+[![NuGet preview version](https://img.shields.io/nuget/vpre/Poser?logo=nuget)](https://www.nuget.org/packages/Poser)
+
 # Poser
 
 Poser allows you to replace any .NET method (including static and non-virtual) with a delegate. It is similar to [Microsoft Fakes](https://msdn.microsoft.com/en-us/library/hh549175.aspx) but unlike it Poser is implemented _entirely_ in managed code (Reflection Emit API). Everything occurs at runtime and in-memory, no unmanaged Profiling APIs and no file system pollution with re-written assemblies.
