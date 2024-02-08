@@ -141,6 +141,66 @@ PoseContext.Isolate(() =>
 }, consoleShim, dateTimeShim, classPropShim, classShim, myClassShim, structShim);
 ```
 
+## Async usage
+### Shim static async method
+```csharp
+using Pose;
+
+Shim staticTaskShim = Shim.Replace(() => DoWorkAsync()).With(
+    delegate
+    {
+        Console.Write("refusing to do work");
+        return Task.CompletedTask;
+    });
+```
+
+### Shim async instance method of a Reference Type
+```csharp
+using Pose;
+
+Shim instanceTaskShim = Shim.Replace(() => Is.A<MyClass>().DoSomethingAsync()).With(
+    delegate(MyClass @this)
+    {
+        Console.WriteLine("doing something else async");
+        return Task.CompletedTask;
+    });
+```
+
+### Shim method of specific instance of a Reference Type
+_Not supported for now. When supported, however, it will look like the following._
+
+```csharp
+using Pose;
+
+MyClass myClass = new MyClass();
+Shim myClassTaskShim = Shim.Replace(() => myClass.DoSomethingAsync()).With(
+    delegate(MyClass @this)
+    {
+        Console.WriteLine("doing something else with myClass async");
+        return Task.CompletedTask;
+    });
+```
+
+### Isolating your async code
+
+```csharp
+// This block executes immediately
+await PoseContext.Isolate(async () =>
+{
+    // All code that executes within this block
+    // is isolated and shimmed methods are replaced
+
+    // Outputs "refusing to do work"
+    await DoWorkAsync();
+    
+    // Outputs "doing something else async"
+    new MyClass().DoSomethingAsync();
+
+    // Outputs "doing something else with myClass async"
+    await myClass.DoSomethingAsync();
+    
+}, staticTaskShim, instanceTaskShim, myClassTaskShim);
+```
 ## Caveats & Limitations
 
 * **Breakpoints** - At this time any breakpoints set anywhere in the isolated code and its execution path will not be hit. However, breakpoints set within a shim replacement delegate are hit.

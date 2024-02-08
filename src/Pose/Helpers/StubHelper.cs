@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-
+using System.Runtime.CompilerServices;
 using Pose.Extensions;
 
 namespace Pose.Helpers
@@ -58,6 +58,11 @@ namespace Pose.Helpers
             
             var bindingFlags = BindingFlags.Instance | (virtualMethod.IsPublic ? BindingFlags.Public : BindingFlags.NonPublic);
             var types = virtualMethod.GetParameters().Select(p => p.ParameterType).ToArray();
+
+            if (thisType.IsAsync())
+            {
+                return thisType.GetExplicitlyImplementedMethod<IAsyncStateMachine>(nameof(IAsyncStateMachine.MoveNext));
+            }
             
             return thisType.GetMethod(virtualMethod.Name, bindingFlags, null, types, null);
         }
@@ -94,11 +99,7 @@ namespace Pose.Helpers
                 if (genericArguments.Length > 0)
                 {
                     name += "[";
-#if NETSTANDARD2_1_OR_GREATER
-                    name += string.Join(',', genericArguments.Select(g => g.Name));
-#else
                     name += string.Join(",", genericArguments.Select(g => g.Name));
-#endif
                     name += "]";
                 }
             }

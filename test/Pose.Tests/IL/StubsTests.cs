@@ -1,7 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using FluentAssertions;
+using Pose.Extensions;
 using Pose.IL;
 using Xunit;
 
@@ -85,6 +89,26 @@ namespace Pose.Tests
             
             var valueParameter = dynamicParameters[1];
             valueParameter.ParameterType.Should().Be(typeof(string), because: "the second parameter is the value to be added");
+        }
+
+        private static async Task<int> GetIntAsync() => await Task.FromResult(1);
+        
+        [Fact]
+        public void Can_generate_stub_for_async_virtual_call()
+        {
+            // Arrange
+            var stateMachineType = typeof(StubsTests)?.GetMethod(nameof(GetIntAsync), BindingFlags.Static | BindingFlags.NonPublic)?.GetCustomAttribute<AsyncStateMachineAttribute>()?.StateMachineType;
+            var moveNextMethod = stateMachineType.GetExplicitlyImplementedMethod<IAsyncStateMachine>(nameof(IAsyncStateMachine.MoveNext));
+            
+            // Act
+            var dynamicMethod = Stubs.GenerateStubForVirtualCall(moveNextMethod);
+            
+            // Assert
+            var dynamicParameters = dynamicMethod.GetParameters();
+            dynamicParameters.Should().HaveCount(1, because: "the dynamic method takes only the instance parameter");
+
+            var instanceParameter = dynamicParameters[0];
+            instanceParameter.ParameterType.Should().Be(stateMachineType, because: "the first parameter is the instance");
         }
 
         [Fact]

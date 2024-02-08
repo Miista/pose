@@ -1,5 +1,10 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Pose.Helpers;
 using Xunit;
@@ -104,5 +109,122 @@ namespace Pose.Tests
             StubHelper.GetOwningModule().Should().Be(typeof(StubHelper).Module);
             StubHelper.GetOwningModule().Should().NotBe(typeof(StubHelperTests).Module);
         }
+
+        private static async Task<int> GetIntAsync() => await Task.FromResult(1);
+        
+        [Fact]
+        // ReSharper disable once IdentifierTypo
+        public void Can_devirtualize_async_virtual_method()
+        {
+            // Arrange
+            var stateMachineType = GetType().GetMethod(nameof(GetIntAsync), BindingFlags.Static | BindingFlags.NonPublic)?.GetCustomAttribute<AsyncStateMachineAttribute>()?.StateMachineType;
+            
+            var methodInfo = typeof(IAsyncStateMachine).GetMethod("MoveNext");
+            
+            // Act
+            var devirtualizedMethodInfo = StubHelper.DeVirtualizeMethod(stateMachineType, methodInfo);
+            
+            // Assert
+            devirtualizedMethodInfo.Should().NotBeNull(because: "the method is implemented on the state machine");
+            devirtualizedMethodInfo.Should().NotBeSameAs(methodInfo, because: "the method is implemented on the state machine, and thus no longer comes from the interface");
+        }
+        
+        [Fact]
+        // ReSharper disable once IdentifierTypo
+        public void Can_devirtualize_method_with_parameters()
+        {
+            // Arrange
+            var type = typeof(Calculator);
+            var interfaceMethod = typeof(ICalculator).GetMethod(nameof(ICalculator.Add), BindingFlags.Instance | BindingFlags.Public);
+            var instanceMethod = typeof(Calculator).GetMethod(nameof(Calculator.Add), BindingFlags.Instance | BindingFlags.Public);
+            
+            // Act
+            var stubbedMethod = StubHelper.DeVirtualizeMethod(type, interfaceMethod);
+            
+            // Assert
+            stubbedMethod.Should().NotBeNull();
+            stubbedMethod.Should().BeSameAs(instanceMethod, because: "the instance method was resolved from the interface method");
+            stubbedMethod.Should().NotBeSameAs(interfaceMethod, because: "the instance method was resolved from the interface method");
+
+            var methodParameters = stubbedMethod.GetParameters();
+            methodParameters.Should().HaveCount(2, because: "there are two parameters to the method");
+            methodParameters.Select(p => p.ParameterType).Should().AllBeOfType<int>();
+        }
+
+        private interface ICalculator
+        {
+            int Add(int a, int b);
+        }
+
+        private class Calculator : ICalculator
+        {
+            public virtual int Add(int a, int b) => a + b;
+
+            public string Stringify<T>(T obj) => obj.ToString();
+            
+#if NET8_0
+            public T GenericAdd<T>(T a, T b) where T : System.Numerics.IAdditionOperators<T, T, T> => a + b;
+#endif
+        }
+
+        [Fact]
+        public void Can_generate_stub_name_from_method()
+        {
+            // Arrange
+            var methodInfo = typeof(Calculator).GetMethod(nameof(Calculator.Add));
+
+            // Act
+            var result = StubHelper.CreateStubNameFromMethod("prefix", methodInfo);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().MatchRegex($"(.+)_(.+)_({methodInfo.Name}).*");
+        }
+        
+        [Fact]
+        public void Can_generate_stub_name_from_generic_method_1()
+        {
+            // Arrange
+            var methodInfo = typeof(List<int>).GetMethod(nameof(List<int>.Add));
+
+            // Act
+            var result = StubHelper.CreateStubNameFromMethod("prefix", methodInfo);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().Contain($"[{typeof(Int32).FullName}]");
+            //result.Should().MatchRegex($"prefix_{typeof(StubHelperTests)}\\+{nameof(Calculator)}_{methodInfo.Name}\\[T\\].*");
+        }
+        
+        [Fact]
+        public void Can_generate_stub_name_from_method_with_generic_parameters()
+        {
+            // Arrange
+            var methodInfo = typeof(Calculator).GetMethod(nameof(Calculator.Stringify)).MakeGenericMethod(typeof(int));
+
+            // Act
+            var result = StubHelper.CreateStubNameFromMethod("prefix", methodInfo);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().Contain($"[{nameof(Int32)}]");
+        }
+
+        
+#if NET8_0
+        [Fact]
+        public void Can_generate_stub_name_from_generic_method()
+        {
+            // Arrange
+            var methodInfo = typeof(Calculator).GetMethod(nameof(Calculator.GenericAdd));
+
+            // Act
+            var result = StubHelper.CreateStubNameFromMethod("prefix", methodInfo);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().MatchRegex($"prefix_{typeof(StubHelperTests)}\\+{nameof(Calculator)}_{methodInfo.Name}\\[T\\].*");
+        }
+#endif
     }
 }
