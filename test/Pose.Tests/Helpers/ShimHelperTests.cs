@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
 using FluentAssertions;
+using Pose.Exceptions;
 using Pose.Helpers;
 using Xunit;
 // ReSharper disable PossibleNullReferenceException
@@ -19,7 +20,7 @@ namespace Pose.Tests
             Action act = () => ShimHelper.GetMethodFromExpression(expression.Body, false, out _);
             
             // Assert
-            act.Should().Throw<NotImplementedException>(because: reason);
+            act.Should().Throw<UnsupportedExpressionException>(because: reason);
         }
 
         // ReSharper disable once InconsistentNaming

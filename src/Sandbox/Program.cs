@@ -6,6 +6,13 @@ namespace Pose.Sandbox
 {
     public class Program
     {
+        public class OverridenOperatorClass
+        {
+            public static explicit operator bool(OverridenOperatorClass c) => false;
+
+            public static implicit operator int(OverridenOperatorClass c) => int.MinValue;
+        }
+        
         public static void Main(string[] args)
         {
 #if NET48
@@ -18,12 +25,31 @@ namespace Pose.Sandbox
                 }, dateTimeShim);
 #elif NETCOREAPP2_0
             Console.WriteLine("2.0");
-            var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
+
+            var sut1 = new OverridenOperatorClass();
+            int s = sut1;
+            var operatorShim = Shim.Replace(() => (bool) sut1)
+                .With(delegate (OverridenOperatorClass c) { return true; });
+            var dateTimeAddShim = Shim.Replace(() => Is.A<DateTime>() + Is.A<TimeSpan>())
+                .With(delegate(DateTime dt, TimeSpan ts) { return new DateTime(2004, 01, 01); });
+            var dateTimeSubtractShim = Shim.Replace(() => Is.A<DateTime>() - Is.A<TimeSpan>())
+                .With(delegate(DateTime dt, TimeSpan ts) { return new DateTime(1990, 01, 01); });
+
             PoseContext.Isolate(
                 () =>
                 {
-                    Console.WriteLine(DateTime.Now);
-                }, dateTimeShim);
+                    var dateTime = DateTime.Now;
+                    Console.WriteLine($"Date: {dateTime}");
+                    var ts = TimeSpan.FromSeconds(1);
+                    Console.WriteLine($"Time: {ts}");
+
+                    var time = dateTime + ts;
+                    Console.WriteLine($"Result1: {time}");
+
+                    var time2 = dateTime - ts;
+                    Console.WriteLine($"Result2: {time2}");
+                }, dateTimeAddShim, dateTimeSubtractShim
+            );
 #elif NET6_0
             Console.WriteLine("6.0");
             var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
