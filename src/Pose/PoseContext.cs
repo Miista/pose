@@ -9,7 +9,6 @@ namespace Pose
     public static class PoseContext
     {
         internal static Shim[] Shims { private set; get; }
-        internal static Dictionary<MethodBase, DynamicMethod> StubCache { private set; get; }
 
         public static void Isolate(Action entryPoint, params Shim[] shims)
         {
@@ -20,7 +19,6 @@ namespace Pose
             }
 
             Shims = shims;
-            StubCache = new Dictionary<MethodBase, DynamicMethod>();
 
             var delegateType = typeof(Action<>).MakeGenericType(entryPoint.Target.GetType());
             var rewriter = MethodRewriter.CreateRewriter(entryPoint.Method, false);
