@@ -231,7 +231,11 @@ namespace Pose.Tests
             result.Should().Be(2, because: "that is the value assigned in the given switch branch");
         }
         
+#if NET47 || NET48
+        [Fact(Skip = "Not supported on .NET Framework 4.7+")]
+#else
         [Fact]
+#endif
         public void Can_handle_exception_filters()
         {
             var value = 1;
