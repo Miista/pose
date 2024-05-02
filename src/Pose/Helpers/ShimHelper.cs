@@ -25,7 +25,7 @@ namespace Pose.Helpers
                         }
                         else
                         {
-                            throw new NotImplementedException("Unsupported expression");
+                            throw new UnsupportedExpressionException($"Expression (of type {expression.GetType()}) with NodeType '{expression.NodeType}' is not supported");
                         }
                     }
                 case ExpressionType.Call:
@@ -37,6 +37,9 @@ namespace Pose.Helpers
                     instanceOrType = null;
                     return newExpression.Constructor;
                 case ExpressionType.Convert:
+                case ExpressionType.Not:
+                case ExpressionType.Negate:
+                case ExpressionType.UnaryPlus:
                     var unaryExpression = expression as UnaryExpression ?? throw new Exception($"Cannot cast expression to {nameof(UnaryExpression)}");
                     instanceOrType = null;
                     return unaryExpression.Method;
