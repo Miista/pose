@@ -9,20 +9,39 @@ namespace Pose.Sandbox
         static void Constrain<TT>(TT a) where TT : IA{
             Console.WriteLine(a.GetString());
         }
+        
+        static void ConstrainD<TT>(TT a) where TT : D{
+            Console.WriteLine(a.GetString2());
+        }
 
         static void Box<TT>(TT a) where TT : B{
             Console.WriteLine(a.GetInt());
+        }
+        
+        static void BoxD<TT>(TT a) where TT : B{
+            Console.WriteLine(a.GetString2());
         }
 
         interface IA {
             string GetString();
         }
         
-        abstract class B {
+        abstract class B : D {
             public int GetInt(){return 0;}
         }
+
+        abstract class D
+        {
+            public string GetString2() => "Wuu?";
+        }
+        
         class A : B, IA {
             public string GetString() => "Hello, World";
+        }
+
+        struct C : IA
+        {
+            public string GetString() => "Wee";
         }
 
         public class OverridenOperatorClass
@@ -48,15 +67,25 @@ namespace Pose.Sandbox
             Console.WriteLine("2.0");
 
             var with = Shim.Replace(() => Is.A<B>().GetInt()).With(delegate(B x) { return 5;});
-            var with1 = Shim.Replace(() => Is.A<A>().GetString()).With(delegate(A x) { return "Hey";});
-            var with2 = Shim.Replace(() => Is.A<IA>().GetString()).With(delegate(IA x) { return "Hey";});
+            var with1 = Shim.Replace(() => Is.A<D>().GetString2()).With(delegate(D x) { return "HeyD";});
+            var with2 = Shim.Replace(() => Is.A<A>().GetString()).With(delegate(A x) { return "Hey";});
+            var shim = Shim.Replace(() => Is.A<C>().GetString()).With(delegate(ref C @this) { return "Hey2"; });
+
+            // var with2 = Shim.Replace(() => Is.A<IA>().GetString()).With(delegate(IA x) { return "Hey";});
             PoseContext.Isolate(
                 () =>
                 {
                     var a = new A();
                     // Box(a);
+                    Console.WriteLine(a.GetString());
                     Constrain(a);
-                }, with, with1, with2);
+                    ConstrainD(a);
+                    BoxD(a);
+
+                    var c = new C();
+                    Console.WriteLine(c.GetString());
+                    Constrain(c);
+                }, with, with1, shim, with2);
             
             // var sut1 = new OverridenOperatorClass();
             // int s = sut1;
