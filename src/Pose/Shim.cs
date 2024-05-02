@@ -56,11 +56,11 @@ namespace Pose
                 _instance = instanceOrType;
         }
 
-        [ExcludeFromCodeCoverage]
+        [ExcludeFromCodeCoverage(Justification = "Forwards to ReplaceImpl")]
         public static Shim Replace(Expression<Action> expression, bool setter = false)
             => ReplaceImpl(expression, setter);
 
-        [ExcludeFromCodeCoverage]
+        [ExcludeFromCodeCoverage(Justification = "Forwards to ReplaceImpl")]
         public static Shim Replace<T>(Expression<Func<T>> expression, bool setter = false)
             => ReplaceImpl(expression, setter);
 
