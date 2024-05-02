@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -158,6 +159,72 @@ namespace Pose.Tests
         private class Calculator : ICalculator
         {
             public virtual int Add(int a, int b) => a + b;
+
+            public string Stringify<T>(T obj) => obj.ToString();
+            
+#if NET8_0
+            public T GenericAdd<T>(T a, T b) where T : System.Numerics.IAdditionOperators<T, T, T> => a + b;
+#endif
         }
+
+        [Fact]
+        public void Can_generate_stub_name_from_method()
+        {
+            // Arrange
+            var methodInfo = typeof(Calculator).GetMethod(nameof(Calculator.Add));
+
+            // Act
+            var result = StubHelper.CreateStubNameFromMethod("prefix", methodInfo);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().MatchRegex($"(.+)_(.+)_({methodInfo.Name}).*");
+        }
+        
+        [Fact]
+        public void Can_generate_stub_name_from_generic_method_1()
+        {
+            // Arrange
+            var methodInfo = typeof(List<int>).GetMethod(nameof(List<int>.Add));
+
+            // Act
+            var result = StubHelper.CreateStubNameFromMethod("prefix", methodInfo);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().Contain($"[{typeof(Int32).FullName}]");
+            //result.Should().MatchRegex($"prefix_{typeof(StubHelperTests)}\\+{nameof(Calculator)}_{methodInfo.Name}\\[T\\].*");
+        }
+        
+        [Fact]
+        public void Can_generate_stub_name_from_method_with_generic_parameters()
+        {
+            // Arrange
+            var methodInfo = typeof(Calculator).GetMethod(nameof(Calculator.Stringify)).MakeGenericMethod(typeof(int));
+
+            // Act
+            var result = StubHelper.CreateStubNameFromMethod("prefix", methodInfo);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().Contain($"[{nameof(Int32)}]");
+        }
+
+        
+#if NET8_0
+        [Fact]
+        public void Can_generate_stub_name_from_generic_method()
+        {
+            // Arrange
+            var methodInfo = typeof(Calculator).GetMethod(nameof(Calculator.GenericAdd));
+
+            // Act
+            var result = StubHelper.CreateStubNameFromMethod("prefix", methodInfo);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().MatchRegex($"prefix_{typeof(StubHelperTests)}\\+{nameof(Calculator)}_{methodInfo.Name}\\[T\\].*");
+        }
+#endif
     }
 }
