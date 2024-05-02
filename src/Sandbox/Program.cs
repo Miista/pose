@@ -7,71 +7,110 @@ namespace Pose.Sandbox
 {
     public class Program
     {
+        internal class MyClass
+        {
+            public async Task DoSomethingAsync() => await Task.CompletedTask;
+        }
+        
         public static async Task<int> GetIntAsync()
         {
             Console.WriteLine("Here");
             return await Task.FromResult(1);
         }
-
-        public static void Main(string[] args)
+        
+        public static async Task DoWorkAsync()
         {
-#if NET48
-            Console.WriteLine("4.8");
-            var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
-            PoseContext.Isolate(
-                () =>
+            Console.WriteLine("Here");
+            await Task.Delay(1000);
+        }
+
+        public static async Task Main(string[] args)
+        {
+            var staticAsyncShim = Shim.Replace(() => DoWorkAsync()).With(
+                delegate
                 {
-                    Console.WriteLine(DateTime.Now);
-                }, dateTimeShim);
-#elif NETCOREAPP2_0
-            Console.WriteLine("2.0");
-            //var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
-            var asyncShim = Shim.Replace(() => GetIntAsync()).With(() =>
-            {
-                Console.WriteLine("This actually works!!!");
-                return Task.FromResult(15);
-            });
-            PoseContext.Isolate(
+                    Console.Write("Don't do work!");
+                    return Task.CompletedTask;
+                });
+            var taskShim = Shim.Replace(() => Is.A<MyClass>().DoSomethingAsync())
+                .With(delegate(MyClass @this)
+                    {
+                        Console.WriteLine("Shimming async Task");
+                        return Task.CompletedTask;
+                    }
+                );
+            await PoseContext.Isolate(
                 async () =>
                 {
-                    var result = await GetIntAsync();
-                    Console.WriteLine($"Result: {result}");
-                    //Console.WriteLine(DateTime.Now);
-                }, asyncShim);
-#elif NET6_0
-            Console.WriteLine("6.0");
-            var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
-            PoseContext.Isolate(
-                () =>
-                {
-                    Console.WriteLine(DateTime.Now);
-                }, dateTimeShim);
-#elif NET7_0
-            Console.WriteLine("7.0");
+                    await DoWorkAsync();
+                }, staticAsyncShim
+            );
 
-            var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
-            PoseContext.Isolate(
-                () =>
-                {
-                    Console.WriteLine(DateTime.Now);
-                }, dateTimeShim);
-#elif NETCOREAPP3_0
-            Console.WriteLine("3.0");
-            var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
-            PoseContext.Isolate(
-                () =>
-                {
-                    Console.WriteLine(DateTime.Now);
-                }, dateTimeShim);
-#else
-            Console.WriteLine("Other");
-            var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
-            PoseContext.Isolate(
-                () =>
-                {
-                    Console.WriteLine(DateTime.Now);
-                }, dateTimeShim);
-#endif
+            // #if NET48
+//             Console.WriteLine("4.8");
+//             var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
+//             PoseContext.Isolate(
+//                 () =>
+//                 {
+//                     Console.WriteLine(DateTime.Now);
+//                 }, dateTimeShim);
+// #elif NETCOREAPP2_0
+//             Console.WriteLine("2.0");
+//             var asyncVoidShim = Shim.Replace(() => DoWorkAsync())
+//                 .With(
+//                     () =>
+//                     {
+//                         Console.WriteLine("Shimming async Task");
+//                         return Task.CompletedTask;
+//                     }
+//                 );
+//             //var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
+//             var asyncShim = Shim.Replace(() => GetIntAsync()).With(() =>
+//             {
+//                 Console.WriteLine("This actually works!!!");
+//                 return Task.FromResult(15);
+//             });
+//             PoseContext.Isolate(
+//                 async () =>
+//                 {
+//                     var result = await GetIntAsync();
+//                     Console.WriteLine($"Result: {result}");
+//                     //Console.WriteLine(DateTime.Now);
+//                 }, asyncShim);
+// #elif NET6_0
+//             Console.WriteLine("6.0");
+//             var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
+//             PoseContext.Isolate(
+//                 () =>
+//                 {
+//                     Console.WriteLine(DateTime.Now);
+//                 }, dateTimeShim);
+// #elif NET7_0
+//             Console.WriteLine("7.0");
+//
+//             var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
+//             PoseContext.Isolate(
+//                 () =>
+//                 {
+//                     Console.WriteLine(DateTime.Now);
+//                 }, dateTimeShim);
+// #elif NETCOREAPP3_0
+//             Console.WriteLine("3.0");
+//             var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
+//             PoseContext.Isolate(
+//                 () =>
+//                 {
+//                     Console.WriteLine(DateTime.Now);
+//                 }, dateTimeShim);
+// #else
+//             Console.WriteLine("Other");
+//             var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
+//             PoseContext.Isolate(
+//                 () =>
+//                 {
+//                     Console.WriteLine(DateTime.Now);
+//                 }, dateTimeShim);
+// #endif
 
             // var dateTimeShim = Shim.Replace(() => T.I).With(() => "L");
             // var dateTimeShim1 = Shim.Replace(() => T.Get()).With(() => "Word");
