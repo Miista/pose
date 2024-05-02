@@ -159,8 +159,6 @@ Poser supports shimming operators of the following kind:
   * `-x`
   * `!x`
   * `~x`
-  * `++`
-  * `--`
   * `x + y`
   * `x - y`
   * `x / y`
@@ -185,6 +183,7 @@ In addition to this, both implicit and explicit conversion operators are support
 Shimming of the following operators is not supported:
 - `true` and `false` because I cannot find a good way to express the operation in an expression tree.
 - `x >>> y` because expression trees cannot contain this operator. This is a limitation on the part of the compiler.
+- `++` and `--` because these cannot be expressed in an expression tree.
 
 ## Caveats & Limitations
 
