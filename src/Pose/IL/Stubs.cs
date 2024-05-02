@@ -173,7 +173,7 @@ namespace Pose.IL
 
             ilGenerator.MarkLabel(returnLabel);
             ilGenerator.Emit(OpCodes.Ret);
-
+            
             return stub;
         }
 
@@ -451,7 +451,7 @@ namespace Pose.IL
             ilGenerator.MarkLabel(rewriteLabel);
             
             // ++
-            if (thisType.IsValueType)
+            if (constructor.DeclaringType.IsValueType)
             {
                 ilGenerator.Emit(OpCodes.Ldloca_S, (byte)1);
                 // ilGenerator.Emit(OpCodes.Dup);
