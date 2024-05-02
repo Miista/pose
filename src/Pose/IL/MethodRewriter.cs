@@ -24,6 +24,7 @@ namespace Pose.IL
         private readonly MethodBase _method;
         private readonly Type _owningType;
         private readonly bool _isInterfaceDispatch;
+        private readonly bool _isAsync;
         
         private int _exceptionBlockLevel;
         private TypeInfo _constrainedType;
@@ -33,6 +34,8 @@ namespace Pose.IL
             _method = method ?? throw new ArgumentNullException(nameof(method));
             _owningType = owningType ?? throw new ArgumentNullException(nameof(owningType));
             _isInterfaceDispatch = isInterfaceDispatch;
+
+            _isAsync = method.Name == nameof(IAsyncStateMachine.MoveNext) && (method.DeclaringType?.IsAsync() ?? false);
         }
 
         public static MethodRewriter CreateRewriter(MethodBase method, bool isInterfaceDispatch)
@@ -308,6 +311,14 @@ namespace Pose.IL
             else if (opCode == OpCodes.Blt_Un_S) opCode = OpCodes.Blt_Un;
             else if (opCode == OpCodes.Leave_S) opCode = OpCodes.Leave;
 
+            // 'Leave' instructions must be emitted if we are rewriting an async method.
+            // Otherwise the rewritten method will always start from the beginning every time.
+            if (opCode == OpCodes.Leave && _isAsync)
+            {
+                ilGenerator.Emit(opCode, targetLabel);
+                return;
+            }
+            
             // Check if 'Leave' opcode is being used in an exception block,
             // only emit it if that's not the case
             if (opCode == OpCodes.Leave && _exceptionBlockLevel > 0) return;
