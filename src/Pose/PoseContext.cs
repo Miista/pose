@@ -22,10 +22,16 @@ namespace Pose
 
             var delegateType = typeof(Action<>).MakeGenericType(entryPoint.Target.GetType());
             var rewriter = MethodRewriter.CreateRewriter(entryPoint.Method, false);
+            
+#if TRACE
             Console.WriteLine("----------------------------- Rewriting ----------------------------- ");
+#endif
             var methodInfo = (MethodInfo)(rewriter.Rewrite());
 
+#if TRACE
             Console.WriteLine("----------------------------- Invoking ----------------------------- ");
+#endif
+            
             methodInfo.CreateDelegate(delegateType).DynamicInvoke(entryPoint.Target);
         }
     }

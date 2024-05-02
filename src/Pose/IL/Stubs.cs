@@ -82,8 +82,10 @@ namespace Pose.IL
                 signatureParamTypes.ToArray(),
                 StubHelper.GetOwningModule(),
                 true);
-
+        
+#if TRACE
             Console.WriteLine("\n" + method);
+#endif
             
             var ilGenerator = stub.GetILGenerator();
 
@@ -280,8 +282,10 @@ namespace Pose.IL
                 StubHelper.GetOwningModule(),
                 true);
 
+#if TRACE
             Console.WriteLine("\n" + method);
-
+#endif
+            
             var ilGenerator = stub.GetILGenerator();
 
             if ((method.GetMethodBody() == null && !method.IsAbstract) || StubHelper.IsIntrinsic(method))
