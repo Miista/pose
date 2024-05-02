@@ -58,9 +58,10 @@ namespace Pose.Helpers
                 case ExpressionType.GreaterThan:
                 case ExpressionType.LessThanOrEqual:
                 case ExpressionType.GreaterThanOrEqual:
+                case ExpressionType.Or:
                     var binaryExpression = expression as BinaryExpression ?? throw new Exception($"Cannot cast expression to {nameof(BinaryExpression)}");
                     instanceOrType = null;
-                    return binaryExpression.Method;
+                    return binaryExpression.Method ?? throw new Exception($"The expression for node type {expression.NodeType} could not be mapped to a method");
                 default:
                     throw new UnsupportedExpressionException($"Expression (of type {expression.GetType()}) with NodeType '{expression.NodeType}' is not supported");
             }
