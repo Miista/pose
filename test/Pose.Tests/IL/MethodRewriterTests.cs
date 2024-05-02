@@ -334,6 +334,27 @@ namespace Pose.Tests
                 act.Should().NotThrow();
                 value.Should().Be(double.MaxValue, because: "that is the value assigned");
             }
+            
+            [Fact]
+            public void Can_handle_Switch()
+            {
+                var value = default(int);
+                Action act = () => PoseContext.Isolate(
+                    () =>
+                    {
+                        var a = int.MaxValue;
+                        switch(a)
+                        {
+                            case 1:  value = 1; break;
+                            case 2:  value = 2; break;
+                            case 3:  value = 3; break;
+                            default: value = int.MinValue; break;
+                        }
+                    }, DummyShim);
+
+                act.Should().NotThrow();
+                value.Should().Be(int.MinValue, because: "that is the value assigned");
+            }
         }
     }
 }

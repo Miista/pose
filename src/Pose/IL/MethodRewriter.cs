@@ -110,7 +110,7 @@ namespace Pose.IL
             var switchTargets = instructions
                 .Where(i => i.Operand is Instruction[])
                 .Select(i => i.Operand as Instruction[]);
-
+            
             foreach (var switchInstructions in switchTargets)
             {
                 if (switchInstructions == null) throw new Exception("The impossible happened");
