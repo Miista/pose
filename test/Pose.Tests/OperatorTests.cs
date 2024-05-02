@@ -33,6 +33,8 @@ namespace Pose.Tests
             public static bool? operator >=(OperatorsClass l, OperatorsClass r) => null;
             public static bool operator true(OperatorsClass l) => false;
             public static bool operator false(OperatorsClass r) => true;
+            public static explicit operator int(OperatorsClass c) => int.MinValue;
+            public static implicit operator double(OperatorsClass c) => double.MinValue;
         }
 
         public class Arithmetic
@@ -608,6 +610,53 @@ namespace Pose.Tests
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
             }
 
+        }
+
+        public class Conversion
+        {
+            [Fact]
+            public void Can_shim_explicit_cast_operator()
+            {
+                // Arrange
+                var shimmedValue = int.MaxValue;
+                var shim = Shim.Replace(() => (int) Is.A<OperatorsClass>())
+                    .With(delegate(OperatorsClass l) { return shimmedValue; });
+
+                // Act
+                var result = int.MinValue;
+                PoseContext.Isolate(
+                    () =>
+                    {
+                        var sut = new OperatorsClass();
+
+                        result = (int) sut; // Explicit cast here
+                    }, shim);
+                
+                // Assert
+                result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+            }
+            
+            [Fact]
+            public void Can_shim_implicit_cast_operator()
+            {
+                // Arrange
+                var shimmedValue = double.MaxValue;
+                var shim = Shim.Replace(() => (double) Is.A<OperatorsClass>())
+                    .With(delegate(OperatorsClass l) { return shimmedValue; });
+
+                // Act
+                var result = double.MinValue;
+                PoseContext.Isolate(
+                    () =>
+                    {
+                        var sut = new OperatorsClass();
+
+                        result = sut; // Implicit cast here
+                    }, shim);
+                
+                // Assert
+                result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+            }
         }
     }
 }
