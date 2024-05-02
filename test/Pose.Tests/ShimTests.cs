@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.Threading;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Pose.Exceptions;
 using Xunit;
@@ -787,6 +788,294 @@ namespace Pose.Tests
                     dt.Text.Should().BeEquivalentTo(nameof(Instance.Text), because: "that is what the shim is configured to return");
                 }
 
+            }
+        }
+
+        public class AsyncMethods
+        {
+            public class StaticTypes
+            {
+                private class Instance
+                {
+                    public static async Task<int> GetIntStaticAsync() => await Task.FromResult(0);
+                }
+
+                [Fact]
+                public void Can_shim_static_async_method()
+                {
+                    // Arrange
+                    const int shimmedValue = 10;
+                    
+                    var shim = Shim
+                        .Replace(() => Instance.GetIntStaticAsync())
+                        .With(() => Task.FromResult(shimmedValue));
+
+                    // Act
+                    int returnedValue = default;
+                    PoseContext.Isolate(
+                        () => { returnedValue = Instance.GetIntStaticAsync().GetAwaiter().GetResult(); },
+                        shim
+                    );
+            
+                    // Assert
+                    returnedValue.Should().Be(shimmedValue, because: "that is what the shim is configured to return");
+                }       
+            }
+            
+            public class ReferenceTypes
+            {
+                private class Instance
+                {
+                    // ReSharper disable once MemberCanBeMadeStatic.Local
+                    public async Task<string> GetStringAsync()
+                    {
+                        return await Task.FromResult("!");
+                    }
+                }
+                
+                [Fact]
+                public void Can_shim_async_method_of_any_instance()
+                {
+                    // Arrange
+                    var action = new Func<Instance, Task<string>>((Instance @this) => Task.FromResult("String"));
+                    var shim = Shim.Replace(() => Is.A<Instance>().GetStringAsync()).With(action);
+
+                    // Act
+                    string dt = default;
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            var instance = new Instance();
+                            dt = instance.GetStringAsync().GetAwaiter().GetResult();
+                        }, shim);
+            
+                    // Assert
+                    dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
+                }
+
+                [Fact]
+                public void Can_shim_async_method_of_specific_instance()
+                {
+                    // Arrange
+                    const string configuredValue = "String";
+                    
+                    var instance = new Instance();
+                    var shim = Shim
+                        .Replace(() => instance.GetStringAsync())
+                        .With((Instance _) => Task.FromResult(configuredValue));
+
+                    // Act
+                    string value = default;
+                    PoseContext.Isolate(
+                        () => { value = instance.GetStringAsync().GetAwaiter().GetResult(); },
+                        shim
+                    );
+            
+                    // Assert
+                    value.Should().BeEquivalentTo(configuredValue, because: "that is what the shim is configured to return");
+                }
+                
+                [Fact]
+                public void Shims_only_the_async_method_of_the_specified_instance()
+                {
+                    // Arrange
+                    var shimmedInstance = new Instance();
+                    var shim = Shim
+                        .Replace(() => shimmedInstance.GetStringAsync())
+                        .With((Instance @this) => Task.FromResult("String"));
+
+                    // Act
+                    string responseFromShimmedInstance = default;
+                    string responseFromNonShimmedInstance = default;
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            responseFromShimmedInstance = shimmedInstance.GetStringAsync().GetAwaiter().GetResult();
+                            var nonShimmedInstance = new Instance();
+                            responseFromNonShimmedInstance = nonShimmedInstance.GetStringAsync().GetAwaiter().GetResult();
+                        }, shim);
+            
+                    // Assert
+                    responseFromShimmedInstance.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
+                    responseFromNonShimmedInstance.Should().NotBeEquivalentTo("String", because: "the shim is configured for a specific instance");
+                    responseFromNonShimmedInstance.Should().BeEquivalentTo("!", because: "that is what the instance returns by default");
+                }
+            }
+            
+            public class ValueTypes
+            {
+                private struct InstanceValue
+                {
+                    public async Task<string> GetStringAsync() => null;
+                }
+
+                [Fact]
+                public void Can_shim_async_instance_method_of_value_type()
+                {
+                    // Arrange
+                    const string configuredValue = "String";
+                    var shim = Shim
+                        .Replace(() => Is.A<InstanceValue>().GetStringAsync())
+                        .With((ref InstanceValue @this) => Task.FromResult(configuredValue));
+
+                    // Act
+                    string value = default;
+                    PoseContext.Isolate(
+                        () => { value = new InstanceValue().GetStringAsync().GetAwaiter().GetResult(); },
+                        shim
+                    );
+            
+                    // Assert
+                    value.Should().BeEquivalentTo(configuredValue, because: "that is what the shim is configured to return");
+                }
+
+            }
+            
+            public class AbstractMethods
+            {
+                private abstract class AbstractBase
+                {
+                    public virtual async Task<string> GetStringAsyncFromAbstractBase() => await Task.FromResult("!");
+
+                    public abstract Task<string> GetAbstractStringAsync();
+                }
+
+                private class DerivedFromAbstractBase : AbstractBase
+                {
+                    public override async Task<string> GetAbstractStringAsync() => throw new NotImplementedException();
+                }
+
+                private class ShadowsMethodFromAbstractBase : AbstractBase
+                {
+                    public override async Task<string> GetStringAsyncFromAbstractBase() => "Shadow";
+                    
+                    public override async Task<string> GetAbstractStringAsync() => throw new NotImplementedException();
+                }
+                
+                [Fact]
+                public void Can_shim_async_instance_method_of_abstract_type()
+                {
+                    // Arrange
+                    var shim = Shim
+                        .Replace(() => Is.A<AbstractBase>().GetStringAsyncFromAbstractBase())
+                        .With((AbstractBase @this) => Task.FromResult("Hello"));
+
+                    // Act
+                    string dt = default;
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            var instance = new DerivedFromAbstractBase();
+                            dt = instance.GetStringAsyncFromAbstractBase().GetAwaiter().GetResult();
+                        },
+                        shim
+                    );
+                    
+                    // Assert
+                    dt.Should().BeEquivalentTo("Hello", because: "the shim configured the base class");
+                }
+                
+                [Fact]
+                public void Can_shim_abstract_task_returning_method_of_abstract_type()
+                {
+                    // Arrange
+                    const string returnValue = "Hello";
+                    
+                    var wasCalled = false;
+                    var action = new Func<AbstractBase, Task<string>>(
+                        (AbstractBase @this) =>
+                        {
+                            wasCalled = true;
+                            return Task.FromResult(returnValue);
+                        });
+                    var shim = Shim
+                        .Replace(() => Is.A<AbstractBase>().GetAbstractStringAsync())
+                        .With(action);
+
+                    // Act
+                    string dt = default;
+                    wasCalled.Should().BeFalse(because: "no calls have been made yet");
+                    // ReSharper disable once SuggestVarOrType_SimpleTypes
+                    Action act = () => PoseContext.Isolate(
+                        () =>
+                        {
+                            var instance = new DerivedFromAbstractBase();
+                            dt = instance.GetAbstractStringAsync().GetAwaiter().GetResult();
+                        },
+                        shim
+                    );
+                    
+                    // Assert
+                    act.Should().NotThrow(because: "the shim works");
+                    wasCalled.Should().BeTrue(because: "the shim has been invoked");
+                    dt.Should().BeEquivalentTo(returnValue, because: "the shim configured the base class");
+                }
+                
+                [Fact]
+                public void Shim_is_not_invoked_if_async_method_is_overriden_in_derived_type()
+                {
+                    // Arrange
+                    var wasCalled = false;
+                    var action = new Func<AbstractBase, Task<string>>(
+                        (AbstractBase @this) =>
+                        {
+                            wasCalled = true;
+                            return Task.FromResult("Hello");
+                        });
+                    var shim = Shim
+                        .Replace(() => Is.A<AbstractBase>().GetStringAsyncFromAbstractBase())
+                        .With(action);
+
+                    // Act
+                    string dt = default;
+                    wasCalled.Should().BeFalse(because: "no calls have been made yet");
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            var instance = new ShadowsMethodFromAbstractBase();
+                            dt = instance.GetStringAsyncFromAbstractBase().GetAwaiter().GetResult();
+                        },
+                        shim
+                    );
+                    
+                    // Assert
+                    var _ = new ShadowsMethodFromAbstractBase();
+                    dt.Should().BeEquivalentTo(_.GetStringAsyncFromAbstractBase().GetAwaiter().GetResult(), because: "the shim configured the base class");
+                    wasCalled.Should().BeFalse(because: "the shim was not invoked");
+                }
+            }
+
+            public class SealedTypes
+            {
+                private sealed class SealedClass
+                {
+                    public async Task<string> GetSealedStringAsync() => await Task.FromResult(nameof(GetSealedStringAsync));
+                }
+
+                [Fact]
+                public void Can_shim_async_method_of_sealed_class()
+                {
+                    // Arrange
+                    var action = new Func<SealedClass, Task<string>>((SealedClass @this) => Task.FromResult("String"));
+                    var shim = Shim.Replace(() => Is.A<SealedClass>().GetSealedStringAsync()).With(action);
+
+                    // Act
+                    string dt = default;
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            var instance = new SealedClass();
+                            dt = instance.GetSealedStringAsync().GetAwaiter().GetResult();
+                        },
+                        shim
+                    );
+            
+                    // Assert
+                    dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
+
+                    var sealedClass = new SealedClass();
+                    dt.Should().NotBeEquivalentTo(sealedClass.GetSealedStringAsync().GetAwaiter().GetResult(), because: "that is the original value");
+                }
             }
         }
 
