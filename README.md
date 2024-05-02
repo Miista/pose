@@ -1,11 +1,11 @@
 [![Build status](https://dev.azure.com/palmund/Pose/_apis/build/status/Pose-CI?branchName=master)](https://dev.azure.com/palmund/Pose/_build/latest?definitionId=12)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![NuGet version](https://badge.fury.io/nu/Poser.svg)](https://www.nuget.org/packages/Poser)
-# Pose
+# Poser
 
-Pose allows you to replace any .NET method (including static and non-virtual) with a delegate. It is similar to [Microsoft Fakes](https://msdn.microsoft.com/en-us/library/hh549175.aspx) but unlike it Pose is implemented _entirely_ in managed code (Reflection Emit API). Everything occurs at runtime and in-memory, no unmanaged Profiling APIs and no file system pollution with re-written assemblies.
+Poser allows you to replace any .NET method (including static and non-virtual) with a delegate. It is similar to [Microsoft Fakes](https://msdn.microsoft.com/en-us/library/hh549175.aspx) but unlike it Pose is implemented _entirely_ in managed code (Reflection Emit API). Everything occurs at runtime and in-memory, no unmanaged Profiling APIs and no file system pollution with re-written assemblies.
 
-Pose is cross platform and runs anywhere .NET is supported. It targets .NET Standard 2.0 so it can be used across .NET platforms including .NET Framework, .NET Core, Mono and Xamarin. See version compatibility table [here](https://docs.microsoft.com/en-us/dotnet/standard/net-standard).
+Poser is cross platform and runs anywhere .NET is supported. It targets .NET Standard 2.0 so it can be used across .NET platforms including .NET Framework, .NET Core, Mono and Xamarin. See version compatibility table [here](https://docs.microsoft.com/en-us/dotnet/standard/net-standard).
 
 ## Installation
 
@@ -14,18 +14,18 @@ Available on [NuGet](https://www.nuget.org/packages/Poser/)
 Visual Studio:
 
 ```powershell
-PM> Install-Package Pose
+PM> Install-Package Poser
 ```
 
 .NET Core CLI:
 
 ```bash
-dotnet add package Pose
+dotnet add package Poser
 ```
 
 ## Usage
 
-Pose gives you the ability to create shims by way of the `Shim` class. Shims are basically objects that let you specify the method you want to replace as well as the replacement delegate. Delegate signatures (arguments and return type) must match that of the methods they replace. The `Is` class is used to create instances of a type and all code you want to apply your shims to is isolated using the `PoseContext` class.
+Poser gives you the ability to create shims by way of the `Shim` class. Shims are basically objects that let you specify the method you want to replace as well as the replacement delegate. Delegate signatures (arguments and return type) must match that of the methods they replace. The `Is` class is used to create instances of a type and all code you want to apply your shims to is isolated using the `PoseContext` class.
 
 
 ### Shim static method
@@ -146,7 +146,7 @@ PoseContext.Isolate(() =>
 
 ## Roadmap
 
-* **Performance Improvements** - Pose can be used outside the context of unit tests. Better performance would make it suitable for use in production code, possibly to override legacy functionality.
+* **Performance Improvements** - Poser can be used outside the context of unit tests. Better performance would make it suitable for use in production code, possibly to override legacy functionality.
 * **Exceptions Stack Trace** - Currently when exceptions are thrown in your own code under isolation, the supplied exception stack trace is quite confusing. Providing an undiluted exception stack trace is needed.
 
 ## Issues & Contributions
