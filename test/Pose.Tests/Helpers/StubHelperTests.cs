@@ -1,5 +1,9 @@
 using System;
+using System.Linq;
+using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Pose.Helpers;
 using Xunit;
@@ -103,6 +107,57 @@ namespace Pose.Tests
         {
             StubHelper.GetOwningModule().Should().Be(typeof(StubHelper).Module);
             StubHelper.GetOwningModule().Should().NotBe(typeof(StubHelperTests).Module);
+        }
+
+        private static async Task<int> GetIntAsync() => await Task.FromResult(1);
+        
+        [Fact]
+        // ReSharper disable once IdentifierTypo
+        public void Can_devirtualize_async_virtual_method()
+        {
+            // Arrange
+            var stateMachineType = GetType().GetMethod(nameof(GetIntAsync), BindingFlags.Static | BindingFlags.NonPublic)?.GetCustomAttribute<AsyncStateMachineAttribute>()?.StateMachineType;
+            
+            var methodInfo = typeof(IAsyncStateMachine).GetMethod("MoveNext");
+            
+            // Act
+            var devirtualizedMethodInfo = StubHelper.DeVirtualizeMethod(stateMachineType, methodInfo);
+            
+            // Assert
+            devirtualizedMethodInfo.Should().NotBeNull(because: "the method is implemented on the state machine");
+            devirtualizedMethodInfo.Should().NotBeSameAs(methodInfo, because: "the method is implemented on the state machine, and thus no longer comes from the interface");
+        }
+        
+        [Fact]
+        // ReSharper disable once IdentifierTypo
+        public void Can_devirtualize_method_with_parameters()
+        {
+            // Arrange
+            var type = typeof(Calculator);
+            var interfaceMethod = typeof(ICalculator).GetMethod(nameof(ICalculator.Add), BindingFlags.Instance | BindingFlags.Public);
+            var instanceMethod = typeof(Calculator).GetMethod(nameof(Calculator.Add), BindingFlags.Instance | BindingFlags.Public);
+            
+            // Act
+            var stubbedMethod = StubHelper.DeVirtualizeMethod(type, interfaceMethod);
+            
+            // Assert
+            stubbedMethod.Should().NotBeNull();
+            stubbedMethod.Should().BeSameAs(instanceMethod, because: "the instance method was resolved from the interface method");
+            stubbedMethod.Should().NotBeSameAs(interfaceMethod, because: "the instance method was resolved from the interface method");
+
+            var methodParameters = stubbedMethod.GetParameters();
+            methodParameters.Should().HaveCount(2, because: "there are two parameters to the method");
+            methodParameters.Select(p => p.ParameterType).Should().AllBeOfType<int>();
+        }
+
+        private interface ICalculator
+        {
+            int Add(int a, int b);
+        }
+
+        private class Calculator : ICalculator
+        {
+            public virtual int Add(int a, int b) => a + b;
         }
     }
 }
