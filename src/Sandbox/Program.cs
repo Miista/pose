@@ -6,6 +6,25 @@ namespace Pose.Sandbox
 {
     public class Program
     {
+        static void Constrain<TT>(TT a) where TT : IA{
+            Console.WriteLine(a.GetString());
+        }
+
+        static void Box<TT>(TT a) where TT : B{
+            Console.WriteLine(a.GetInt());
+        }
+
+        interface IA {
+            string GetString();
+        }
+        
+        abstract class B {
+            public int GetInt(){return 0;}
+        }
+        class A : B, IA {
+            public string GetString() => "Hello, World";
+        }
+
         public class OverridenOperatorClass
         {
             public static explicit operator bool(OverridenOperatorClass c) => false;
@@ -28,32 +47,43 @@ namespace Pose.Sandbox
 #elif NETCOREAPP2_0
             Console.WriteLine("2.0");
 
-            var sut1 = new OverridenOperatorClass();
-            int s = sut1;
-            Shim.Replace(() => Is.A<OverridenOperatorClass>() + Is.A<OverridenOperatorClass>())
-                .With(delegate(OverridenOperatorClass l, int r) { return default(OverridenOperatorClass); });
-            var operatorShim = Shim.Replace(() => (bool) sut1)
-                .With(delegate (OverridenOperatorClass c) { return true; });
-            var dateTimeAddShim = Shim.Replace(() => Is.A<DateTime>() + Is.A<TimeSpan>())
-                .With(delegate(DateTime dt, TimeSpan ts) { return new DateTime(2004, 01, 01); });
-            var dateTimeSubtractShim = Shim.Replace(() => Is.A<DateTime>() - Is.A<TimeSpan>())
-                .With(delegate(DateTime dt, TimeSpan ts) { return new DateTime(1990, 01, 01); });
-
+            var with = Shim.Replace(() => Is.A<B>().GetInt()).With(delegate(B x) { return 5;});
+            var with1 = Shim.Replace(() => Is.A<A>().GetString()).With(delegate(A x) { return "Hey";});
+            var with2 = Shim.Replace(() => Is.A<IA>().GetString()).With(delegate(IA x) { return "Hey";});
             PoseContext.Isolate(
                 () =>
                 {
-                    var dateTime = DateTime.Now;
-                    Console.WriteLine($"Date: {dateTime}");
-                    var ts = TimeSpan.FromSeconds(1);
-                    Console.WriteLine($"Time: {ts}");
-
-                    var time = dateTime + ts;
-                    Console.WriteLine($"Result1: {time}");
-
-                    var time2 = dateTime - ts;
-                    Console.WriteLine($"Result2: {time2}");
-                }, dateTimeAddShim, dateTimeSubtractShim
-            );
+                    var a = new A();
+                    // Box(a);
+                    Constrain(a);
+                }, with, with1, with2);
+            
+            // var sut1 = new OverridenOperatorClass();
+            // int s = sut1;
+            // Shim.Replace(() => Is.A<OverridenOperatorClass>() + Is.A<OverridenOperatorClass>())
+            //     .With(delegate(OverridenOperatorClass l, int r) { return default(OverridenOperatorClass); });
+            // var operatorShim = Shim.Replace(() => (bool) sut1)
+            //     .With(delegate (OverridenOperatorClass c) { return true; });
+            // var dateTimeAddShim = Shim.Replace(() => Is.A<DateTime>() + Is.A<TimeSpan>())
+            //     .With(delegate(DateTime dt, TimeSpan ts) { return new DateTime(2004, 01, 01); });
+            // var dateTimeSubtractShim = Shim.Replace(() => Is.A<DateTime>() - Is.A<TimeSpan>())
+            //     .With(delegate(DateTime dt, TimeSpan ts) { return new DateTime(1990, 01, 01); });
+            //
+            // PoseContext.Isolate(
+            //     () =>
+            //     {
+            //         var dateTime = DateTime.Now;
+            //         Console.WriteLine($"Date: {dateTime}");
+            //         var ts = TimeSpan.FromSeconds(1);
+            //         Console.WriteLine($"Time: {ts}");
+            //
+            //         var time = dateTime + ts;
+            //         Console.WriteLine($"Result1: {time}");
+            //
+            //         var time2 = dateTime - ts;
+            //         Console.WriteLine($"Result2: {time2}");
+            //     }, dateTimeAddShim, dateTimeSubtractShim
+            // );
 #elif NET6_0
             Console.WriteLine("6.0");
             var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));

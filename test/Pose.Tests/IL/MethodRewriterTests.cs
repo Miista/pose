@@ -102,7 +102,7 @@ namespace Pose.Tests
             // Assert
             result.Should().Be(1, because: "that is what the method returns from the try block");
         }
-
+        
         public static int TryCatch_ReturnsFromTry()
         {
             try

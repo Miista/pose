@@ -195,6 +195,10 @@ namespace Pose.IL
                 StubHelper.GetOwningModule(),
                 true);
             
+#if TRACE
+            Console.WriteLine("\n" + method);
+#endif
+            
             var ilGenerator = stub.GetILGenerator();
 
             if ((actualMethod.GetMethodBody() == null && !actualMethod.IsAbstract) || StubHelper.IsIntrinsic(actualMethod))
@@ -222,6 +226,34 @@ namespace Pose.IL
             ilGenerator.Emit(OpCodes.Call, GetMethodFromHandle);
             ilGenerator.Emit(OpCodes.Castclass, typeof(MethodInfo));
 
+                        // Resolve virtual method to object type
+            ilGenerator.Emit(OpCodes.Ldarg_0);
+            ilGenerator.Emit(OpCodes.Ldloc_0);
+            ilGenerator.Emit(OpCodes.Call, DeVirtualizeMethod);
+            ilGenerator.Emit(OpCodes.Stloc_0);
+            
+            ilGenerator.Emit(OpCodes.Ldloc_0);
+            ilGenerator.Emit(method.IsForValueType() ? OpCodes.Ldnull : OpCodes.Ldarg_0);
+            ilGenerator.Emit(OpCodes.Call, GetIndexOfMatchingShim);
+            ilGenerator.Emit(OpCodes.Stloc_1);
+            ilGenerator.Emit(OpCodes.Ldloc_1);
+            ilGenerator.Emit(OpCodes.Ldc_I4_M1);
+            ilGenerator.Emit(OpCodes.Ceq);
+            ilGenerator.Emit(OpCodes.Brtrue_S, rewriteLabel);
+            ilGenerator.Emit(OpCodes.Ldloc_1);
+            ilGenerator.Emit(OpCodes.Call, GetShimReplacementMethod);
+            ilGenerator.Emit(OpCodes.Stloc_0);
+            ilGenerator.Emit(OpCodes.Ldloc_0);
+            ilGenerator.Emit(OpCodes.Call, GetMethodPointer);
+            ilGenerator.Emit(OpCodes.Stloc_2);
+            ilGenerator.Emit(OpCodes.Ldloc_1);
+            ilGenerator.Emit(OpCodes.Call, GetShimDelegateTarget);
+            for (var i = 0; i < signatureParamTypes.Count; i++)
+                ilGenerator.Emit(OpCodes.Ldarg, i);
+            ilGenerator.Emit(OpCodes.Ldloc_2);
+            ilGenerator.EmitCalli(OpCodes.Calli, CallingConventions.HasThis, method.ReturnType, signatureParamTypes.ToArray(), null);
+            ilGenerator.Emit(OpCodes.Br_S, returnLabel);
+            
             // Rewrite method
             ilGenerator.MarkLabel(rewriteLabel);
             ilGenerator.Emit(OpCodes.Ldc_I4_0);
