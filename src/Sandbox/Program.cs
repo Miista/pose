@@ -24,27 +24,24 @@ namespace Pose.Sandbox
             await Task.Delay(1000);
         }
 
+        private static async Task Run(MyClass myClass)
+        {
+            await myClass.DoSomethingAsync();
+        }
+        
         public static async Task Main(string[] args)
         {
-            var staticAsyncShim = Shim.Replace(() => DoWorkAsync()).With(
-                delegate
-                {
-                    Console.Write("Don't do work!");
-                    return Task.CompletedTask;
-                });
-            var taskShim = Shim.Replace(() => Is.A<MyClass>().DoSomethingAsync())
-                .With(delegate(MyClass @this)
+            var myClass = new MyClass();
+            var myShim = Shim.Replace(() => myClass.DoSomethingAsync())
+                .With(
+                    delegate (MyClass @this)
                     {
-                        Console.WriteLine("Shimming async Task");
+                        Console.WriteLine("LOL");
                         return Task.CompletedTask;
                     }
                 );
-            await PoseContext.Isolate(
-                async () =>
-                {
-                    await DoWorkAsync();
-                }, staticAsyncShim
-            );
+            
+            PoseContext.Isolate(() => Run(myClass), myShim);
 
             // #if NET48
 //             Console.WriteLine("4.8");
