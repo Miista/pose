@@ -99,17 +99,20 @@ namespace Pose.Helpers
                     throw new InvalidShimSignatureException("ValueType instances must be passed by ref");
             }
 
-            var expectedType = (isValueType && !isStaticOrConstructor ? validOwningType.MakeByRefType() : validOwningType);
-            if (expectedType != shimOwningType)
-                throw new InvalidShimSignatureException($"Mismatched instance types. Expected {expectedType.FullName}. Got {shimOwningType.FullName}");
+            var expectedOwningType = (isValueType && !isStaticOrConstructor ? validOwningType.MakeByRefType() : validOwningType);
+            if (expectedOwningType != shimOwningType)
+                throw new InvalidShimSignatureException($"Mismatched instance types. Expected {expectedOwningType.FullName}. Got {shimOwningType.FullName}");
 
             if (validParameterTypes.Length != shimParameterTypes.Length)
                 throw new InvalidShimSignatureException($"Parameters count do not match. Expected {validParameterTypes.Length}. Got {shimParameterTypes.Length}");
 
             for (var i = 0; i < validParameterTypes.Length; i++)
             {
-                if (validParameterTypes.ElementAt(i) != shimParameterTypes.ElementAt(i))
-                    throw new InvalidShimSignatureException($"Parameter types at {i} do not match");
+                var expectedType = validParameterTypes.ElementAt(i);
+                var actualType = shimParameterTypes.ElementAt(i);
+                
+                if (expectedType != actualType)
+                    throw new InvalidShimSignatureException($"Parameter types at {i} do not match. Expected '{expectedType}' but found {actualType}'");
             }
         }
 
