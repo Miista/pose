@@ -59,6 +59,14 @@ namespace Pose.Helpers
             var bindingFlags = BindingFlags.Instance | (virtualMethod.IsPublic ? BindingFlags.Public : BindingFlags.NonPublic);
             var types = virtualMethod.GetParameters().Select(p => p.ParameterType).ToArray();
             
+            if (thisType.IsNestedPrivate && thisType.GetInterfaces().Any(i => i.Name == "IAsyncStateMachine"))
+            {
+                var nestedType = thisType;
+                var targetMethod = nestedType.GetInterfaceMap(nestedType.GetInterfaces()[0].GetMethod("MoveNext").DeclaringType).TargetMethods[0];
+
+                return targetMethod;
+            }
+            
             return thisType.GetMethod(virtualMethod.Name, bindingFlags, null, types, null);
         }
 
