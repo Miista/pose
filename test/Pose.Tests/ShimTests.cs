@@ -161,12 +161,15 @@ namespace Pose.Tests
                 {
                     public virtual string GetStringFromAbstractBase() => "!";
 
+                    public virtual string GetTFromAbstractBase(string input) => "?";
+                    
                     public abstract string GetAbstractString();
                 }
 
                 private class DerivedFromAbstractBase : AbstractBase
                 {
                     public override string GetAbstractString() => throw new NotImplementedException();
+                    
                 }
 
                 private class ShadowsMethodFromAbstractBase : AbstractBase
@@ -191,6 +194,29 @@ namespace Pose.Tests
                         {
                             var instance = new DerivedFromAbstractBase();
                             dt = instance.GetStringFromAbstractBase();
+                        },
+                        shim
+                    );
+                    
+                    // Assert
+                    dt.Should().BeEquivalentTo("Hello", because: "the shim configured the base class");
+                }
+                
+                [Fact]
+                public void Can_shim_instance_method_with_parameters_declared_on_abstract_type()
+                {
+                    // Arrange
+                    var shim = Shim
+                        .Replace(() => Is.A<AbstractBase>().GetTFromAbstractBase(Is.A<string>()))
+                        .With((AbstractBase @this, string @string) => "Hello");
+
+                    // Act
+                    string dt = default;
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            var instance = new DerivedFromAbstractBase();
+                            dt = instance.GetTFromAbstractBase("");
                         },
                         shim
                     );
