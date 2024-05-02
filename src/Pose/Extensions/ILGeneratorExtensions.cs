@@ -1,9 +1,11 @@
 namespace Pose.Extensions
 {
     using System;
+    using System.Diagnostics.CodeAnalysis;
     using System.Reflection;
     using System.Reflection.Emit;
     
+    [ExcludeFromCodeCoverage(Justification = "Used only internally when printing out IL instructions")]
     internal static class ILGeneratorExtensions
     {
         public static byte[] GetILBytes(this ILGenerator ilGenerator)
