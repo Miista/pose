@@ -114,7 +114,7 @@ namespace Pose.Helpers
 
             var expectedOwningType = (isValueType && !isStaticOrConstructor ? validOwningType.MakeByRefType() : validOwningType);
             if (expectedOwningType != shimOwningType)
-                throw new InvalidShimSignatureException($"Mismatched instance types. Expected {expectedOwningType.FullName}. Got {shimOwningType.FullName}");
+                throw new InvalidShimSignatureException($"Mismatched instance types. Expected {expectedOwningType.FullName}. Got {shimOwningType.FullName}. If you are shimming an instance method, then the first parameter to the replacement must be an instance of the type.");
 
             if (validParameterTypes.Length != shimParameterTypes.Length)
                 throw new InvalidShimSignatureException($"Parameters count do not match. Expected {validParameterTypes.Length}. Got {shimParameterTypes.Length}");
