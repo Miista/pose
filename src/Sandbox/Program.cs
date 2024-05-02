@@ -25,15 +25,19 @@ namespace Pose.Sandbox
                 }, dateTimeShim);
 #elif NETCOREAPP2_0
             Console.WriteLine("2.0");
-            var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
-            var asyncShim = Shim.Replace(() => GetIntAsync()).With(() => Task.FromResult(10));
+            //var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
+            var asyncShim = Shim.Replace(() => GetIntAsync()).With(() =>
+            {
+                Console.WriteLine("This actually works!!!");
+                return Task.FromResult(15);
+            });
             PoseContext.Isolate(
-                () =>
+                async () =>
                 {
-                    var result = GetIntAsync().GetAwaiter().GetResult();
+                    var result = await GetIntAsync();
                     Console.WriteLine($"Result: {result}");
                     //Console.WriteLine(DateTime.Now);
-                }, dateTimeShim, asyncShim);
+                }, asyncShim);
 #elif NET6_0
             Console.WriteLine("6.0");
             var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
