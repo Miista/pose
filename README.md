@@ -179,6 +179,8 @@ Poser supports shimming operators of the following kind:
   * `x <= y`
   * `x >= y`
 
+In addition to this, both implicit and explicit conversion operators are supported.
+
 ### Unsupported operators
 Shimming of the following operators is not supported:
 - `true` and `false` because I cannot find a good way to express the operation in an expression tree.
