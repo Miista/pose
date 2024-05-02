@@ -821,6 +821,8 @@ namespace Pose.Tests
             private class Instance
             {
                 public string GetString() => null;
+
+                public int GetInt(string someValue) => int.MinValue;
             }
 
             [Fact]
@@ -836,6 +838,21 @@ namespace Pose.Tests
                 // Assert
                 act.Should().Throw<InvalidShimSignatureException>(because: "the signature of the replacement method does not match the original");
                 act1.Should().Throw<InvalidShimSignatureException>(because: "the signature of the replacement method does not match the original");
+            }
+            
+            [Fact]
+            public void Throws_InvalidShimSignatureException_if_parameter_types_for_the_replacement_do_not_match()
+            {
+                // Arrange
+                var shimTests = new Instance();
+                
+                // Act
+                Action act = () => Shim
+                    .Replace(() => shimTests.GetInt(Is.A<string>()))
+                    .With((Instance instance, int x) => { return int.MinValue; }); // Targets Shim.Replace(Expression<Func<T>>) 
+                
+                // Assert
+                act.Should().Throw<InvalidShimSignatureException>(because: "the parameter types for the replacement method does not match the original");
             }
             
             [Fact]
