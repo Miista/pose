@@ -35,7 +35,7 @@ namespace Pose.Tests
             public static bool operator true(OperatorsClass l) => false;
             public static bool operator false(OperatorsClass r) => true;
             public static explicit operator int(OperatorsClass c) => int.MinValue;
-            public static implicit operator double(OperatorsClass c) => double.MinValue;
+            public static implicit operator double(OperatorsClass c) => 42.0;
         }
 
         public class Arithmetic
@@ -48,66 +48,57 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => Is.A<OperatorsClass>() + Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
 
-                // Act
+                var left = new OperatorsClass();
+                var right = new OperatorsClass();
                 var result = default(OperatorsClass);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var left = new OperatorsClass();
-                        var right = new OperatorsClass();
-
-                        result = left + right;
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = left + right, shim);
                 
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe(left + right, because: "the implementation has been shimmed");
             }
 
             [Fact]
-            public void Can_shim_addition_operator_for_DateTime()
+            public void Can_shim_addition_operator_for_TimeSpan()
             {
                 // Arrange
                 var shimmedValue = TimeSpan.FromSeconds(2);
                 var shim = Shim.Replace(() => Is.A<TimeSpan>() + Is.A<TimeSpan>())
-                    .With(delegate(TimeSpan dt, TimeSpan ts) { return shimmedValue; });
+                    .With(delegate(TimeSpan l, TimeSpan r) { return shimmedValue; });
 
-                // Act
+                var now = TimeSpan.Zero;
+                var zeroSeconds = TimeSpan.Zero;
                 var result = default(TimeSpan);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var now = TimeSpan.Zero;
-                        var zeroSeconds = TimeSpan.Zero;
-
-                        result = now + zeroSeconds;
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = now + zeroSeconds, shim);
                 
                 // Assert
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe(now + zeroSeconds, because: "the implementation has been shimmed");
             }
 
             [Fact]
-            public void Can_shim_subtraction_operator_for_DateTime()
+            public void Can_shim_subtraction_operator_for_TimeSpan()
             {
                 // Arrange
                 var shimmedValue = TimeSpan.FromDays(2);
                 var shim = Shim.Replace(() => Is.A<TimeSpan>() - Is.A<TimeSpan>())
                     .With(delegate(TimeSpan dt, TimeSpan ts) { return shimmedValue; });
 
-                // Act
+                var now = TimeSpan.Zero;
+                var zeroSeconds = TimeSpan.Zero;
                 var result = default(TimeSpan);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var now = TimeSpan.Zero;
-                        var zeroSeconds = TimeSpan.Zero;
-
-                        result = now - zeroSeconds;
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = now - zeroSeconds, shim);
                 
                 // Assert
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe(now - zeroSeconds, because: "the implementation has been shimmed");
             }
             
             [Fact]
@@ -118,20 +109,17 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => Is.A<OperatorsClass>() - Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
 
-                // Act
+                var left = new OperatorsClass();
+                var right = new OperatorsClass();
                 var result = default(OperatorsClass);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var left = new OperatorsClass();
-                        var right = new OperatorsClass();
-
-                        result = left - right;
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = left - right, shim);
                 
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe(left - right, because: "the implementation has been shimmed");
             }
             
             [Fact]
@@ -142,20 +130,17 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => Is.A<OperatorsClass>() * Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
 
-                // Act
+                var left = new OperatorsClass();
+                var right = new OperatorsClass();
                 var result = default(OperatorsClass);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var left = new OperatorsClass();
-                        var right = new OperatorsClass();
-
-                        result = left * right;
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = left * right, shim);
                 
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe(left * right, because: "the implementation has been shimmed");
             }
             
             [Fact]
@@ -166,20 +151,17 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => Is.A<OperatorsClass>() / Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
 
-                // Act
+                var left = new OperatorsClass();
+                var right = new OperatorsClass();
                 var result = default(OperatorsClass);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var left = new OperatorsClass();
-                        var right = new OperatorsClass();
-
-                        result = left / right;
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = left / right, shim);
                 
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe(left / right, because: "the implementation has been shimmed");
             }
 
             [Fact]
@@ -190,20 +172,17 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => Is.A<OperatorsClass>() % Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
 
-                // Act
+                var left = new OperatorsClass();
+                var right = new OperatorsClass();
                 var result = default(OperatorsClass);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var left = new OperatorsClass();
-                        var right = new OperatorsClass();
-
-                        result = left % right;
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = left % right, shim);
                 
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe(left % right, because: "the implementation has been shimmed");
             }
             
             [Fact]
@@ -214,19 +193,16 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => ~Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l) { return shimmedValue; });
 
-                // Act
+                var sut = new OperatorsClass();
                 var result = default(OperatorsClass);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var sut = new OperatorsClass();
-
-                        result = ~sut;
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = ~sut, shim);
                 
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe(~sut, because: "the implementation has been shimmed");
             }
             
             [Fact(Skip = "How to get the operator method from expression?")]
@@ -237,15 +213,30 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l) { return shimmedValue; });
 
-                // Act
+                var sut = new OperatorsClass();
                 var result = default(OperatorsClass);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var sut = new OperatorsClass();
+                
+                // Act
+                PoseContext.Isolate(() => result = sut ? shimmedValue : null, shim);
+                
+                // Assert
+                result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
+                result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+            }
+            
+            [Fact(Skip = "How to get the operator method from expression?")]
+            public void Can_shim_false_operator()
+            {
+                // Arrange
+                var shimmedValue = new OperatorsClass { Value = "Hello, World" };
+                var shim = Shim.Replace(() => Is.A<OperatorsClass>())
+                    .With(delegate(OperatorsClass l) { return shimmedValue; });
 
-                        result = sut ? shimmedValue : null;
-                    }, shim);
+                var sut = new OperatorsClass();
+                var result = default(OperatorsClass);
+                
+                // Act
+                PoseContext.Isolate(() => result = sut ? null : shimmedValue, shim);
                 
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
@@ -260,19 +251,16 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => +Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l) { return shimmedValue; });
 
-                // Act
+                var sut = new OperatorsClass();
                 var result = default(OperatorsClass);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var sut = new OperatorsClass();
-
-                        result = +sut;
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = +sut, shim);
                 
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe(+sut, because: "the implementation has been shimmed");
             }
             
             [Fact]
@@ -283,19 +271,16 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => -Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l) { return shimmedValue; });
 
-                // Act
+                var sut = new OperatorsClass();
                 var result = default(OperatorsClass);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var sut = new OperatorsClass();
-
-                        result = -sut;
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = -sut, shim);
                 
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe(-sut, because: "the implementation has been shimmed");
             }
         }
 
@@ -309,20 +294,17 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => Is.A<OperatorsClass>() << Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
 
-                // Act
+                var left = new OperatorsClass();
+                var right = new OperatorsClass();
                 var result = default(OperatorsClass);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var left = new OperatorsClass();
-                        var right = new OperatorsClass();
-
-                        result = left << right;
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = left << right, shim);
                 
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe(left << right, because: "the implementation has been shimmed");
             }
 
             [Fact]
@@ -333,20 +315,17 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => Is.A<OperatorsClass>() >> Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
 
-                // Act
+                var left = new OperatorsClass();
+                var right = new OperatorsClass();
                 var result = default(OperatorsClass);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var left = new OperatorsClass();
-                        var right = new OperatorsClass();
-
-                        result = left >> right;
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = left >> right, shim);
                 
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe(left >> right, because: "the implementation has been shimmed");
             }
         }
 
@@ -374,6 +353,11 @@ namespace Pose.Tests
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                
+                // Verify actual implementation
+                var left = new OperatorsClass();
+                var right = new OperatorsClass();
+                (left == right).Should().BeNull(because: "that is the actual implementation");
             }
             
             [Fact]
@@ -398,6 +382,11 @@ namespace Pose.Tests
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                
+                // Verify actual implementation
+                var left = new OperatorsClass();
+                var right = new OperatorsClass();
+                (left != right).Should().BeNull(because: "that is the actual implementation");
             }
             
             [Fact]
@@ -422,6 +411,11 @@ namespace Pose.Tests
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                
+                // Verify actual implementation
+                var left = new OperatorsClass();
+                var right = new OperatorsClass();
+                (left < right).Should().BeNull(because: "that is the actual implementation");
             }
             
             [Fact]
@@ -446,6 +440,11 @@ namespace Pose.Tests
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                
+                // Verify actual implementation
+                var left = new OperatorsClass();
+                var right = new OperatorsClass();
+                (left > right).Should().BeNull(because: "that is the actual implementation");
             }
             
             [Fact]
@@ -470,6 +469,11 @@ namespace Pose.Tests
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                
+                // Verify actual implementation
+                var left = new OperatorsClass();
+                var right = new OperatorsClass();
+                (left >= right).Should().BeNull(because: "that is the actual implementation");
             }
             
             [Fact]
@@ -494,8 +498,12 @@ namespace Pose.Tests
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                
+                // Verify actual implementation
+                var left = new OperatorsClass();
+                var right = new OperatorsClass();
+                (left <= right).Should().BeNull(because: "that is the actual implementation");
             }
-
         }
 
         public class Conversion
@@ -508,18 +516,15 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => (int) Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l) { return shimmedValue; });
 
-                // Act
+                var sut = new OperatorsClass();
                 var result = int.MinValue;
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var sut = new OperatorsClass();
-
-                        result = (int) sut; // Explicit cast here
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = (int) sut, shim);
                 
                 // Assert
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe((int)sut, because: "the implementation has been shimmed");
             }
             
             [Fact]
@@ -531,18 +536,15 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => (double) Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l) { return shimmedValue; });
 
-                // Act
-                var result = double.MinValue;
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var sut = new OperatorsClass();
-
-                        result = sut; // Implicit cast here
-                    }, shim);
+                var sut = new OperatorsClass();
+                var result = 42.0;
                 
+                // Act
+                PoseContext.Isolate(() => result = sut, shim);
+
                 // Assert
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe((double)sut, because: "the implementation has been shimmed");
             }
         }
 
@@ -556,19 +558,16 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => ~Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l) { return shimmedValue; });
 
-                // Act
+                var sut = new OperatorsClass();
                 var result = default(OperatorsClass);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var sut = new OperatorsClass();
-
-                        result = ~sut;
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = ~sut, shim);
                 
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe(~sut, because: "the implementation has been shimmed");
             }
             
             [Fact]
@@ -579,20 +578,17 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => Is.A<OperatorsClass>() & Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
 
-                // Act
+                var left = new OperatorsClass();
+                var right = new OperatorsClass();
                 var result = default(OperatorsClass);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var left = new OperatorsClass();
-                        var right = new OperatorsClass();
-
-                        result = left & right;
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = left & right, shim);
                 
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe(left & result, because: "the implementation has been shimmed");
             }
 
             [Fact]
@@ -603,20 +599,17 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => Is.A<OperatorsClass>() ^ Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
 
-                // Act
+                var left = new OperatorsClass();
+                var right = new OperatorsClass();
                 var result = default(OperatorsClass);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var left = new OperatorsClass();
-                        var right = new OperatorsClass();
-
-                        result = left ^ right;
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = left ^ right, shim);
                 
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe(left ^ right, because: "the implementation has been shimmed");
             }
 
             [Fact]
@@ -627,20 +620,17 @@ namespace Pose.Tests
                 var shim = Shim.Replace(() => Is.A<OperatorsClass>() | Is.A<OperatorsClass>())
                     .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
 
-                // Act
+                var left = new OperatorsClass();
+                var right = new OperatorsClass();
                 var result = default(OperatorsClass);
-                PoseContext.Isolate(
-                    () =>
-                    {
-                        var left = new OperatorsClass();
-                        var right = new OperatorsClass();
-
-                        result = left | right;
-                    }, shim);
+                
+                // Act
+                PoseContext.Isolate(() => result = left | right, shim);
                 
                 // Assert
                 result.Should().NotBeNull(because: "the shim is configured to return a non-null value");
                 result.Should().Be(shimmedValue, because: "that is the value the shim is configured to return");
+                result.Should().NotBe(left | right, because: "the implementation has been shimmed");
             }
         }
     }
