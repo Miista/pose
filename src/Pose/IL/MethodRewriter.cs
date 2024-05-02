@@ -119,13 +119,13 @@ namespace Pose.IL
                     targetInstructions.TryAdd(instruction.Offset, ilGenerator.DefineLabel());
             }
 
-#if DEBUG
+#if TRACE
             Console.WriteLine("\n" + _method);
 #endif
 
             foreach (var instruction in instructions)
             {
-#if DEBUG
+#if TRACE
                 Console.WriteLine(instruction);
 #endif
 
@@ -181,7 +181,7 @@ namespace Pose.IL
                 }
             }
 
-#if DEBUG
+#if TRACE
             var ilBytes = ilGenerator.GetILBytes();
             var browsableDynamicMethod = new BrowsableDynamicMethod(dynamicMethod, new DynamicMethodBody(ilBytes, locals));
             Console.WriteLine("\n" + dynamicMethod);
