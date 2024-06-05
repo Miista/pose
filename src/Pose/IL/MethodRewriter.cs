@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
-
+using System.Runtime.InteropServices;
 using Mono.Reflection;
 using Pose.Exceptions;
 using Pose.Extensions;
@@ -176,6 +176,9 @@ namespace Pose.IL
                     case OperandType.InlineMethod:
                         EmitILForInlineMember(ilGenerator, instruction);
                         break;
+                    case OperandType.InlineSig:
+                        EmitILForInlineSig(ilGenerator, instruction);
+                        break;
                     default:
                         throw new NotSupportedException(instruction.OpCode.OperandType.ToString());
                 }
@@ -192,6 +195,11 @@ namespace Pose.IL
             }
 #endif
             return dynamicMethod;
+        }
+
+        private void EmitILForInlineSig(ILGenerator ilGenerator, Instruction instruction)
+        {
+            ilGenerator.EmitCalli(OpCodes.Calli, CallingConvention.StdCall, typeof(void), new Type[]{typeof(ulong)});
         }
 
         private void EmitILForExceptionHandlers(ILGenerator ilGenerator, Instruction instruction, IReadOnlyCollection<ExceptionHandler> handlers)
