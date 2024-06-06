@@ -117,6 +117,12 @@ Shim structShim = Shim.Replace(() => Is.A<MyStruct>().DoSomething()).With(
 
 _Note: You cannot shim methods on specific instances of Value Types_
 
+### Shim operators
+
+```csharp
+var operatorShim = Shim.Replace(() => Is.A<TimeSpan>() + Is.A<TimeSpan>()).With(
+    delegate(TimeSpan l, TimeSpan r) { return TimeSpan.Zero; });
+```
 ### Isolating your code
 
 ```csharp
@@ -137,9 +143,47 @@ PoseContext.Isolate(() =>
 
     // Outputs "doing someting else with myClass"
     myClass.DoSomething();
+    
+    // Outputs '00:00:00'
+    Console.WriteLine(TimeSpan.FromDays(1) + TimeSpan.FromSeconds(2));
 
-}, consoleShim, dateTimeShim, classPropShim, classShim, myClassShim, structShim);
+}, consoleShim, dateTimeShim, classPropShim, classShim, myClassShim, structShim, operatorShim);
 ```
+
+## Shimming operators
+Operator shimming requires that the class/struct overloads the operator in question.
+
+Poser supports shimming operators of the following kind:
+* Arithmetic
+  * `+x`
+  * `-x`
+  * `!x`
+  * `~x`
+  * `x + y`
+  * `x - y`
+  * `x / y`
+  * `x % y`
+  * `x & y`
+  * `x | y`
+  * `x ^ y`
+  * `x << y`
+  * `x >> y`
+* Equality
+  * `x == y`
+  * `x != y`
+* Comparison
+  * `x < y`
+  * `x > y`
+  * `x <= y`
+  * `x >= y`
+
+In addition to this, both implicit and explicit conversion operators are supported.
+
+### Unsupported operators
+Shimming of the following operators is not supported:
+- `true` and `false` because I cannot find a good way to express the operation in an expression tree.
+- `x >>> y` because expression trees cannot contain this operator. This is a limitation on the part of the compiler.
+- `++` and `--` because these cannot be expressed in an expression tree.
 
 ## Caveats & Limitations
 

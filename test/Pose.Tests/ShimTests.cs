@@ -48,15 +48,27 @@ namespace Pose.Tests
 
             public class ReferenceTypes
             {
-                private class Instance
+                private interface IBase
+                {
+                    public double GetDouble();
+                }
+                
+                private abstract class Base
+                {
+                    public virtual int GetInt() => 0;
+                }
+                
+                private class Instance : Base, IBase
                 {
                     // ReSharper disable once MemberCanBeMadeStatic.Local
                     public string GetString()
                     {
                         return "!";
                     }
+
+                    public double GetDouble() => default(double);
                 }
-                
+
                 [Fact]
                 public void Can_shim_method_of_any_instance()
                 {
@@ -75,6 +87,84 @@ namespace Pose.Tests
             
                     // Assert
                     dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
+                }
+
+                /// <summary>
+                /// This method has the following IL code:
+                /// <pre>
+                ///     IL_0001: ldarg.0      // 'instance'
+                ///     IL_0002: box          !!0/*T*/
+                ///     IL_0007: callvirt     instance int32 Pose.Tests.ShimTests/Methods/ReferenceTypes/Base::GetInt()
+                ///     IL_000c: stloc.0      // V_0
+                ///     IL_000d: br.s         IL_000f
+                /// </pre>
+                /// </summary>
+                /// <param name="instance"></param>
+                /// <typeparam name="T"></typeparam>
+                /// <returns></returns>
+                private static int Box<T>(T instance) where T : Base
+                {
+                    return instance.GetInt();
+                }
+
+                [Fact]
+                public void Can_shim_boxed_virtual_method_of_any_instance()
+                {
+                    // Arrange
+                    var shim = Shim.Replace(() => Is.A<Base>().GetInt()).With(delegate(Base @base) { return int.MinValue; });
+
+                    // Act
+                    int dt = default;
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            var instance = new Instance();
+                            dt = Box(instance);
+                        }, shim);
+            
+                    // Assert
+                    dt.Should().Be(int.MinValue, because: "that is what the shim is configured to return");
+                }
+                
+                /// <summary>
+                /// This method has the following IL code:
+                /// <pre>
+                ///     IL_0001: ldarga.s     'instance'
+                ///     IL_0003: constrained. !!0/*T*/
+                ///     IL_0009: callvirt     instance float64 Pose.Tests.ShimTests/Methods/ReferenceTypes/IBase::GetDouble()
+                ///     IL_000e: stloc.0      // V_0
+                ///     IL_000f: br.s         IL_0011
+                /// </pre>
+                /// </summary>
+                /// <param name="instance"></param>
+                /// <typeparam name="T"></typeparam>
+                /// <returns></returns>
+                private static double Constrain<T>(T instance) where T : IBase
+                {
+                    return instance.GetDouble();
+                }
+
+#if NET6_0_OR_GREATER
+                [Fact(Skip = "Not supported on .NET 6+ (for some reason). Will need to investigate.")]
+#else
+        [Fact]
+#endif
+                public void Can_shim_constrained_virtual_method_of_any_instance()
+                {
+                    // Arrange
+                    var shim = Shim.Replace(() => Is.A<Instance>().GetDouble()).With(delegate(Instance @base) { return double.MinValue; });
+
+                    // Act
+                    double dt = default;
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            var instance = new Instance();
+                            dt = Constrain(instance);
+                        }, shim);
+            
+                    // Assert
+                    dt.Should().Be(double.MinValue, because: "that is what the shim is configured to return");
                 }
 
                 [Fact]
@@ -98,7 +188,7 @@ namespace Pose.Tests
                     // Assert
                     value.Should().BeEquivalentTo(configuredValue, because: "that is what the shim is configured to return");
                 }
-                
+
                 [Fact]
                 public void Shims_only_the_method_of_the_specified_instance()
                 {
@@ -161,12 +251,15 @@ namespace Pose.Tests
                 {
                     public virtual string GetStringFromAbstractBase() => "!";
 
+                    public virtual string GetTFromAbstractBase(string input) => "?";
+                    
                     public abstract string GetAbstractString();
                 }
 
                 private class DerivedFromAbstractBase : AbstractBase
                 {
                     public override string GetAbstractString() => throw new NotImplementedException();
+                    
                 }
 
                 private class ShadowsMethodFromAbstractBase : AbstractBase
@@ -191,6 +284,29 @@ namespace Pose.Tests
                         {
                             var instance = new DerivedFromAbstractBase();
                             dt = instance.GetStringFromAbstractBase();
+                        },
+                        shim
+                    );
+                    
+                    // Assert
+                    dt.Should().BeEquivalentTo("Hello", because: "the shim configured the base class");
+                }
+                
+                [Fact]
+                public void Can_shim_instance_method_with_parameters_declared_on_abstract_type()
+                {
+                    // Arrange
+                    var shim = Shim
+                        .Replace(() => Is.A<AbstractBase>().GetTFromAbstractBase(Is.A<string>()))
+                        .With((AbstractBase @this, string @string) => "Hello");
+
+                    // Act
+                    string dt = default;
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            var instance = new DerivedFromAbstractBase();
+                            dt = instance.GetTFromAbstractBase("");
                         },
                         shim
                     );
@@ -795,6 +911,8 @@ namespace Pose.Tests
             private class Instance
             {
                 public string GetString() => null;
+
+                public int GetInt(string someValue) => int.MinValue;
             }
 
             [Fact]
@@ -810,6 +928,21 @@ namespace Pose.Tests
                 // Assert
                 act.Should().Throw<InvalidShimSignatureException>(because: "the signature of the replacement method does not match the original");
                 act1.Should().Throw<InvalidShimSignatureException>(because: "the signature of the replacement method does not match the original");
+            }
+            
+            [Fact]
+            public void Throws_InvalidShimSignatureException_if_parameter_types_for_the_replacement_do_not_match()
+            {
+                // Arrange
+                var shimTests = new Instance();
+                
+                // Act
+                Action act = () => Shim
+                    .Replace(() => shimTests.GetInt(Is.A<string>()))
+                    .With((Instance instance, int x) => { return int.MinValue; }); // Targets Shim.Replace(Expression<Func<T>>) 
+                
+                // Assert
+                act.Should().Throw<InvalidShimSignatureException>(because: "the parameter types for the replacement method does not match the original");
             }
             
             [Fact]

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using FluentAssertions;
 using Pose.IL;
 using Xunit;
@@ -85,6 +86,34 @@ namespace Pose.Tests
             
             var valueParameter = dynamicParameters[1];
             valueParameter.ParameterType.Should().Be(typeof(string), because: "the second parameter is the value to be added");
+        }
+
+        private interface IB
+        {
+            int GetInt();
+        }
+        
+        private class B : IB
+        {
+            public int GetInt() => 10;
+        }
+        
+        [Fact]
+        public void Can_generate_stub_for_virtual_constrained_call()
+        {
+            // Arrange
+            var thisType = typeof(IB);
+            var methodInfo = thisType.GetMethod(nameof(IB.GetInt));
+
+            // Act
+            var dynamicMethod = Stubs.GenerateStubForVirtualCall(methodInfo, typeof(B).GetTypeInfo());
+            
+            // Assert
+            var dynamicParameters = dynamicMethod.GetParameters();
+            dynamicParameters.Should().HaveCount(1, because: "the dynamic method takes just the instance parameter");
+
+            var instanceParameter = dynamicParameters[0];
+            instanceParameter.ParameterType.Should().Be(typeof(B).MakeByRefType(), because: "the first parameter is the instance");
         }
 
         [Fact]

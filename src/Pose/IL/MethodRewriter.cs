@@ -110,7 +110,7 @@ namespace Pose.IL
             var switchTargets = instructions
                 .Where(i => i.Operand is Instruction[])
                 .Select(i => i.Operand as Instruction[]);
-
+            
             foreach (var switchInstructions in switchTargets)
             {
                 if (switchInstructions == null) throw new Exception("The impossible happened");
@@ -119,13 +119,13 @@ namespace Pose.IL
                     targetInstructions.TryAdd(instruction.Offset, ilGenerator.DefineLabel());
             }
 
-#if DEBUG
+#if TRACE
             Console.WriteLine("\n" + _method);
 #endif
 
             foreach (var instruction in instructions)
             {
-#if DEBUG
+#if TRACE
                 Console.WriteLine(instruction);
 #endif
 
@@ -181,7 +181,7 @@ namespace Pose.IL
                 }
             }
 
-#if DEBUG
+#if TRACE
             var ilBytes = ilGenerator.GetILBytes();
             var browsableDynamicMethod = new BrowsableDynamicMethod(dynamicMethod, new DynamicMethodBody(ilBytes, locals));
             Console.WriteLine("\n" + dynamicMethod);

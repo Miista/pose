@@ -1,9 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netcoreapp2.0;netcoreapp3.0;net48;net7.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;netcoreapp2.0;netcoreapp3.0;net48;net5.0;net7.0;net8.0</TargetFrameworks>
     <DebugType>portable</DebugType>
     <AssemblyName>Pose</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DefineConstants></DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Mono.Reflection.Core" Version="1.1.1" />

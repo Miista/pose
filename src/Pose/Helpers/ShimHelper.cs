@@ -4,6 +4,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 
 using Pose.Exceptions;
+using Pose.Extensions;
 
 namespace Pose.Helpers
 {
@@ -25,7 +26,7 @@ namespace Pose.Helpers
                         }
                         else
                         {
-                            throw new NotImplementedException("Unsupported expression");
+                            throw new UnsupportedExpressionException($"Expression (of type {expression.GetType()}) with NodeType '{expression.NodeType}' is not supported");
                         }
                     }
                 case ExpressionType.Call:
@@ -36,9 +37,46 @@ namespace Pose.Helpers
                     var newExpression = expression as NewExpression ?? throw new Exception($"Cannot cast expression to {nameof(NewExpression)}");
                     instanceOrType = null;
                     return newExpression.Constructor;
+                case ExpressionType.Convert:
+                case ExpressionType.Not:
+                case ExpressionType.Negate:
+                case ExpressionType.UnaryPlus:
+                    var unaryExpression = expression as UnaryExpression ?? throw new Exception($"Cannot cast expression to {nameof(UnaryExpression)}");
+                    instanceOrType = null;
+                    return unaryExpression.Method ?? throw new Exception(GetExceptionMessage(expression));
+                case ExpressionType.Add:
+                case ExpressionType.Subtract:
+                case ExpressionType.Multiply:
+                case ExpressionType.Divide:
+                case ExpressionType.LeftShift:
+                case ExpressionType.RightShift:
+                case ExpressionType.Modulo:
+                case ExpressionType.ExclusiveOr:
+                case ExpressionType.And:
+                case ExpressionType.Equal:
+                case ExpressionType.NotEqual:
+                case ExpressionType.LessThan:
+                case ExpressionType.GreaterThan:
+                case ExpressionType.LessThanOrEqual:
+                case ExpressionType.GreaterThanOrEqual:
+                case ExpressionType.Or:
+                    var binaryExpression = expression as BinaryExpression ?? throw new Exception($"Cannot cast expression to {nameof(BinaryExpression)}");
+                    instanceOrType = null;
+                    return binaryExpression.Method ?? throw new Exception(GetExceptionMessage(expression));
                 default:
-                    throw new NotImplementedException("Unsupported expression");
+                    throw new UnsupportedExpressionException($"Expression (of type {expression.GetType()}) with NodeType '{expression.NodeType}' is not supported");
             }
+        }
+
+        private static string GetExceptionMessage(Expression expression)
+        {
+            if (expression.NodeType.IsOverloadableOperator())
+            {
+                return
+                    $"Cannot shim the {expression.NodeType} operator on {expression.Type} because the type itself does not overload this operator.";
+            }
+
+            return $"The expression for node type {expression.NodeType} could not be mapped to a method";
         }
 
         public static void ValidateReplacementMethodSignature(MethodBase original, MethodInfo replacement, Type type, bool setter)
@@ -74,17 +112,20 @@ namespace Pose.Helpers
                     throw new InvalidShimSignatureException("ValueType instances must be passed by ref");
             }
 
-            var expectedType = (isValueType && !isStaticOrConstructor ? validOwningType.MakeByRefType() : validOwningType);
-            if (expectedType != shimOwningType)
-                throw new InvalidShimSignatureException($"Mismatched instance types. Expected {expectedType.FullName}. Got {shimOwningType.FullName}");
+            var expectedOwningType = (isValueType && !isStaticOrConstructor ? validOwningType.MakeByRefType() : validOwningType);
+            if (expectedOwningType != shimOwningType)
+                throw new InvalidShimSignatureException($"Mismatched instance types. Expected {expectedOwningType.FullName}. Got {shimOwningType.FullName}. If you are shimming an instance method, then the first parameter to the replacement must be an instance of the type.");
 
             if (validParameterTypes.Length != shimParameterTypes.Length)
                 throw new InvalidShimSignatureException($"Parameters count do not match. Expected {validParameterTypes.Length}. Got {shimParameterTypes.Length}");
 
             for (var i = 0; i < validParameterTypes.Length; i++)
             {
-                if (validParameterTypes.ElementAt(i) != shimParameterTypes.ElementAt(i))
-                    throw new InvalidShimSignatureException($"Parameter types at {i} do not match");
+                var expectedType = validParameterTypes.ElementAt(i);
+                var actualType = shimParameterTypes.ElementAt(i);
+                
+                if (expectedType != actualType)
+                    throw new InvalidShimSignatureException($"Parameter types at {i} do not match. Expected '{expectedType}' but found {actualType}'");
             }
         }
 

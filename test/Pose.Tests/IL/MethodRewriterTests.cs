@@ -102,7 +102,7 @@ namespace Pose.Tests
             // Assert
             result.Should().Be(1, because: "that is what the method returns from the try block");
         }
-
+        
         public static int TryCatch_ReturnsFromTry()
         {
             try
@@ -187,16 +187,178 @@ namespace Pose.Tests
             var called = false;
             var enteredCatchBlock = false;
             
+            // A shim is necessary for the entry point to be rewritten
+            var shim = Shim.Replace(() => Console.WriteLine(Is.A<string>())).With(delegate(string s) { Console.WriteLine(s); });
+            
             Action act = () => PoseContext.Isolate(
                 () =>
                 {
                     try { called = true; }
                     catch (Exception) { enteredCatchBlock = true; }
-                });
+                }, shim);
 
             act.Should().NotThrow();
             called.Should().BeTrue();
             enteredCatchBlock.Should().BeFalse();
+        }
+
+        private int Switch(int value)
+        {
+            return value switch
+            {
+                0 => 1,
+                1 => 2,
+                _ => -1
+            };
+        }
+        
+        [Fact]
+        public void Can_handle_switch_statements()
+        {
+            var value = 1;
+            var result = default(int);
+
+            // A shim is necessary for the entry point to be rewritten
+            var shim = Shim.Replace(() => Console.WriteLine(Is.A<string>())).With(delegate(string s) { Console.WriteLine(s); });
+
+            Action act = () => PoseContext.Isolate(
+                () =>
+                {
+                    result = Switch(value);
+                }, shim);
+
+            act.Should().NotThrow();
+            result.Should().Be(2, because: "that is the value assigned in the given switch branch");
+        }
+        
+#if NET47 || NET48
+        [Fact(Skip = "Not supported on .NET Framework 4.7+")]
+#else
+        [Fact]
+#endif
+        public void Can_handle_exception_filters()
+        {
+            var value = 1;
+            var result = default(int);
+
+            // A shim is necessary for the entry point to be rewritten
+            var shim = Shim.Replace(() => Console.WriteLine(Is.A<string>())).With(delegate(string s) { Console.WriteLine(s); });
+
+            Action act = () => PoseContext.Isolate(
+                () =>
+                {
+                    try
+                    {
+                        throw new Exception("Hello");
+                    }
+                    catch (Exception e) when (e.Message == "Hello")
+                    {
+                        result = 1;
+                    }
+                    catch (Exception)
+                    {
+                        result = -1;
+                    }
+                }, shim);
+
+            act.Should().NotThrow();
+            result.Should().Be(1, because: "that is the value assigned in the matched catch block");
+        }
+
+        public class OpCodes
+        {
+            private static readonly Shim DummyShim = Shim.Replace(() => Console.WriteLine(Is.A<string>())).With(delegate(string s) { Console.WriteLine(s); });
+
+            [Fact]
+            public void Can_handle_InlineI8()
+            {
+                var value = default(long);
+                Action act = () => PoseContext.Isolate(
+                    () =>
+                    {
+                        value = long.MaxValue;
+                    }, DummyShim);
+
+                act.Should().NotThrow();
+                value.Should().Be(long.MaxValue, because: "that is the value assigned");
+            }
+        
+            [Fact]
+            public void Can_handle_InlineI()
+            {
+                var value = default(int);
+                Action act = () => PoseContext.Isolate(
+                    () =>
+                    {
+                        value = int.MaxValue;
+                    }, DummyShim);
+
+                act.Should().NotThrow();
+                value.Should().Be(int.MaxValue, because: "that is the value assigned");
+            }
+            
+            [Fact]
+            public void Can_handle_ShortInlineI()
+            {
+                var value = default(sbyte);
+                Action act = () => PoseContext.Isolate(
+                    () =>
+                    {
+                        value = sbyte.MaxValue;
+                    }, DummyShim);
+
+                act.Should().NotThrow();
+                value.Should().Be(sbyte.MaxValue, because: "that is the value assigned");
+            }
+            
+            [Fact]
+            public void Can_handle_ShortInlineR()
+            {
+                var value = default(Single);
+                Action act = () => PoseContext.Isolate(
+                    () =>
+                    {
+                        value = Single.MaxValue;
+                    }, DummyShim);
+
+                act.Should().NotThrow();
+                value.Should().Be(Single.MaxValue, because: "that is the value assigned");
+            }
+            
+            [Fact]
+            public void Can_handle_InlineR()
+            {
+                var value = default(double);
+                Action act = () => PoseContext.Isolate(
+                    () =>
+                    {
+                        value = double.MaxValue;
+                    }, DummyShim);
+
+                act.Should().NotThrow();
+                value.Should().Be(double.MaxValue, because: "that is the value assigned");
+            }
+            
+            [Fact]
+            public void Can_handle_Switch()
+            {
+                var value = default(int);
+                Action act = () => PoseContext.Isolate(
+                    () =>
+                    {
+                        var a = int.MaxValue;
+                        switch(a)
+                        {
+                            case 1:  value = 1; break;
+                            case 2:  value = 2; break;
+                            case 3:  value = 3; break;
+                            default: value = int.MinValue; break;
+                        }
+                    }, DummyShim);
+
+                act.Should().NotThrow();
+                value.Should().Be(int.MinValue, because: "that is the value assigned");
+            }
         }
     }
 }
