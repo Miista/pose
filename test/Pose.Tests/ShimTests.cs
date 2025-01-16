@@ -13,8 +13,245 @@ using Xunit;
 
 namespace Pose.Tests
 {
+    internal static class InstanceExtensions
+    {
+        public static string GetString(this ShimTests.ExtensionMethods.ReferenceTypes.Instance instance) => null;
+        
+        public static string GetString(this ShimTests.ExtensionMethods.ValueTypes.Instance instance) => null;
+        
+        public static string GetString(this ShimTests.ExtensionMethods.SealedTypes.Instance instance) => null;
+    }
+    
     public class ShimTests
     {
+        public class ExplicitInterfaceImplementations
+        {
+            public class ReferenceTypes
+            {
+                private interface IInterface
+                {
+                    string Text2 { get;}
+
+                    string GetText();
+                }
+                
+                private class Instance : IInterface
+                {
+                    public string Text { get; set; }
+
+                    string IInterface.Text2 => "Hey";
+                    
+                    string IInterface.GetText() => "Hey";
+                }
+                
+                [Fact]
+                public void Can_shim_explicit_interface_property()
+                {
+                    // Arrange
+                    const string configuredValue = "Hello";
+                    var action = new Func<IInterface, string>((IInterface @this) => configuredValue);
+                    var shim = Shim.Replace(() => Is.A<IInterface>().Text2).With(action);
+                    var instance = new Instance();
+
+                    // Act
+                    string value1 = default;
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            value1 = ((IInterface)instance).Text2;
+                        }, shim);
+            
+                    // Assert
+                    value1.Should().BeEquivalentTo(configuredValue, because: "the shim is configured for any instance");
+
+                    IInterface secondInstance = new Instance();
+                    secondInstance.Text2.Should().NotBeEquivalentTo(value1, because: "this instance is created outside the isolated code");
+                }
+                
+                [Fact]
+                public void Can_shim_explicit_interface_method()
+                {
+                    // Arrange
+                    const string configuredValue = "Hello";
+                    var action = new Func<IInterface, string>((IInterface @this) => configuredValue);
+                    var shim = Shim.Replace(() => Is.A<IInterface>().GetText()).With(action);
+                    var instance = new Instance();
+
+                    // Act
+                    string value1 = default;
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            value1 = ((IInterface)instance).GetText();
+                        }, shim);
+            
+                    // Assert
+                    value1.Should().BeEquivalentTo(configuredValue, because: "the shim is configured for any instance");
+
+                    IInterface secondInstance = new Instance();
+                    secondInstance.GetText().Should().NotBeEquivalentTo(value1, because: "this instance is created outside the isolated code");
+                }
+            }
+
+            public class ValueTypes
+            {
+                private interface IInterface
+                {
+                    string Text2 { get;}
+
+                    string GetText();
+                }
+                
+                private struct InstanceValue : IInterface
+                {
+                    public string Text { get; set; }
+                    
+                    string IInterface.Text2 => "Hey";
+                    
+                    string IInterface.GetText() => "Hey";
+                }
+                
+                [Fact]
+                public void Can_shim_explicit_interface_property()
+                {
+                    // Arrange
+                    const string configuredValue = "Hello";
+                    var action = new Func<IInterface, string>((IInterface @this) => configuredValue);
+                    var shim = Shim.Replace(() => Is.A<IInterface>().Text2).With(action);
+                    var instance = new InstanceValue();
+
+                    // Act
+                    string value1 = default;
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            value1 = ((IInterface)instance).Text2;
+                        }, shim);
+            
+                    // Assert
+                    value1.Should().BeEquivalentTo(configuredValue, because: "the shim is configured for any instance");
+
+                    IInterface secondInstance = new InstanceValue();
+                    secondInstance.Text2.Should().NotBeEquivalentTo(value1, because: "this instance is created outside the isolated code");
+                }
+                
+                [Fact]
+                public void Can_shim_explicit_interface_method()
+                {
+                    // Arrange
+                    const string configuredValue = "Hello";
+                    var action = new Func<IInterface, string>((IInterface @this) => configuredValue);
+                    var shim = Shim.Replace(() => Is.A<IInterface>().GetText()).With(action);
+                    var instance = new InstanceValue();
+
+                    // Act
+                    string value1 = default;
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            value1 = ((IInterface)instance).GetText();
+                        }, shim);
+            
+                    // Assert
+                    value1.Should().BeEquivalentTo(configuredValue, because: "the shim is configured for any instance");
+
+                    IInterface secondInstance = new InstanceValue();
+                    secondInstance.GetText().Should().NotBeEquivalentTo(value1, because: "this instance is created outside the isolated code");
+                }
+            }
+        }
+        
+        public class ExtensionMethods
+        {
+            public class ReferenceTypes
+            {
+                internal class Instance { }
+
+                [Fact]
+                public void Can_shim_extension_method_of_reference_type()
+                {
+                    // Arrange
+                    const string configuredValue = "String";
+                    var action = new Func<Instance, string>((Instance @this) => configuredValue);
+                    var shim = Shim.Replace(() => Is.A<Instance>().GetString()).With(action);
+
+                    // Act
+                    string dt = default;
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            var instance = new Instance();
+                            dt = instance.GetString();
+                        },
+                        shim
+                    );
+
+                    // Assert
+                    dt.Should().BeEquivalentTo(configuredValue, because: "that is what the shim is configured to return");
+                }
+            }
+            
+            public class ValueTypes
+            {
+                internal struct Instance { }
+
+                [Fact]
+                public void Can_shim_extension_method_of_value_type()
+                {
+                    // Arrange
+                    const string configuredValue = "String";
+                    var action = new Func<Instance, string>((Instance @this) => configuredValue);
+                    var shim = Shim
+                        .Replace(() => Is.A<Instance>().GetString())
+                        .With(action);
+
+                    // Act
+                    string value = default;
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            value = new Instance().GetString();
+                        },
+                        shim
+                    );
+            
+                    // Assert
+                    value.Should().BeEquivalentTo(configuredValue, because: "that is what the shim is configured to return");
+                }
+            }
+            
+            public class SealedTypes
+            {
+                internal sealed class Instance { }
+
+                [Fact]
+                public void Can_shim_method_of_sealed_class()
+                {
+                    // Arrange
+                    const string configuredValue = "String";
+                    var action = new Func<Instance, string>((Instance @this) => configuredValue);
+                    var shim = Shim.Replace(() => Is.A<Instance>().GetString()).With(action);
+
+                    // Act
+                    string dt = default;
+                    PoseContext.Isolate(
+                        () =>
+                        {
+                            var instance = new Instance();
+                            dt = instance.GetString();
+                        },
+                        shim
+                    );
+            
+                    // Assert
+                    dt.Should().BeEquivalentTo(configuredValue, because: "that is what the shim is configured to return");
+
+                    var sealedClass = new Instance();
+                    dt.Should().NotBeEquivalentTo(sealedClass.GetString(), because: "that is the original value");
+                }
+            }
+        }
+        
         public class Methods
         {
             public class StaticTypes

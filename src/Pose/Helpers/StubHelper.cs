@@ -38,10 +38,27 @@ namespace Pose.Helpers
                 s => ReferenceEquals(obj, s.Instance) && s.Original == methodBase);
 
             if (index == -1)
-                return Array.FindIndex(PoseContext.Shims,
-                            s => SignatureEquals(s, type, methodBase) && s.Instance == null);
+            {
+                index = Array.FindIndex(PoseContext.Shims, s => SignatureEquals(s, type, methodBase) && s.Instance == null);
+            }
+
+            if (index == -1)
+            {
+                index = Array.FindIndex(PoseContext.Shims, s => IsExplicitImplementation(s, type, methodBase) && s.Instance == null);
+            }
 
             return index;
+        }
+        
+        private static bool IsExplicitImplementation(Shim shim, Type type, MethodBase method)
+        {
+            if (shim.Type == null || type == shim.Type) return false;
+            if (!shim.Type.IsInterface) return false;
+            if (!type.ImplementsInterface(shim.Type)) return false;
+
+            var interfaceMap = type.GetInterfaceMap(shim.Type);
+            
+            return interfaceMap.TargetMethods.FirstOrDefault(m => m.Name == method.Name) != null;
         }
 
         public static int GetIndexOfMatchingShim(MethodBase methodBase, object obj)
@@ -59,9 +76,64 @@ namespace Pose.Helpers
             var bindingFlags = BindingFlags.Instance | (virtualMethod.IsPublic ? BindingFlags.Public : BindingFlags.NonPublic);
             var types = virtualMethod.GetParameters().Select(p => p.ParameterType).ToArray();
             
-            return thisType.GetMethod(virtualMethod.Name, bindingFlags, null, types, null);
+            var method = thisType.GetMethod(virtualMethod.Name, bindingFlags, null, types, null);
+            
+            if (method == null)
+            {
+                // Attempt to get the method from an explicitly implemented interface
+                var interfaces = thisType.GetInterfaces();
+                var declaringInterface = interfaces.FirstOrDefault(i => i == virtualMethod.DeclaringType);
+                var explicitlyImplementedMethod = GetExplicitlyImplementedMethod(declaringInterface, thisType, virtualMethod);
+            
+                return explicitlyImplementedMethod;
+            }
+
+            return method;
         }
 
+        private static MethodInfo GetExplicitlyImplementedMethod(Type interfaceType, Type type, MethodInfo virtualMethod)
+        {
+            if (type == null) throw new ArgumentNullException(nameof(type));
+            if (virtualMethod == null) throw new ArgumentNullException(nameof(virtualMethod));
+            if (!interfaceType.IsInterface) throw new InvalidOperationException($"{interfaceType} is not an interface.");
+
+            var method = interfaceType.GetMethod(virtualMethod.Name) ?? throw new Exception();
+
+            var methodDeclaringType = method.DeclaringType ?? throw new Exception($"The {virtualMethod} method does not have a declaring type");
+
+            if (type.IsArray && methodDeclaringType.IsGenericType)
+            {
+                // Cannot retrieve interface maps for generic interfaces on arrays
+                return type
+                    .GetMethods(BindingFlags.Instance | BindingFlags.NonPublic)
+                    .SingleOrDefault(m => m.Name.EndsWith(virtualMethod.Name));
+            }
+            
+            // Retrieve the method via the interface mapping for the type
+            var interfaceMapping = type.GetInterfaceMap(methodDeclaringType);
+            var interfaceMethods = interfaceMapping.InterfaceMethods.ToArray();
+            var index = Array.FindIndex(interfaceMethods, m => m.DeclaringType == interfaceType && m.Name == virtualMethod.Name);
+            var targetMethod = interfaceMapping.TargetMethods[index];
+
+            return targetMethod;
+        }
+        
+        private static Type GetInterfaceType(this Type type, Type interfaceType)
+        {
+            if (type == null) throw new ArgumentNullException(nameof(type));
+            if (!interfaceType.IsInterface) throw new InvalidOperationException($"{interfaceType} is not an interface.");
+
+            return type.GetInterfaces().FirstOrDefault(interfaceType1 => interfaceType1 == interfaceType);
+        }
+
+        private static bool ImplementsInterface(this Type type, Type interfaceType)
+        {
+            if (type == null) throw new ArgumentNullException(nameof(type));
+            if (!interfaceType.IsInterface) throw new InvalidOperationException($"{interfaceType} is not an interface.");
+
+            return type.GetInterfaceType(interfaceType) != null;
+        }
+        
         public static Module GetOwningModule() => typeof(StubHelper).Module;
 
         public static bool IsIntrinsic(MethodBase method)

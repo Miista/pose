@@ -31,8 +31,8 @@ namespace Pose.IL
             ?? throw new Exception($"Cannot get method {nameof(MethodRewriter.CreateRewriter)} from type {nameof(MethodRewriter)}");
 
         private static readonly MethodInfo GetMethodFromHandle =
-            typeof(MethodBase).GetMethod(nameof(MethodBase.GetMethodFromHandle), new Type[] { typeof(RuntimeMethodHandle), typeof(RuntimeTypeHandle) })
-            ?? throw new Exception($"Cannot get method {nameof(MethodBase.GetMethodFromHandle)} from type {nameof(MethodBase)}");
+            typeof(MethodHelper).GetMethod(nameof(MethodHelper.GetMethodFromHandle), new Type[] { typeof(RuntimeMethodHandle), typeof(RuntimeTypeHandle) })
+            ?? throw new Exception($"Cannot get method {nameof(MethodHelper.GetMethodFromHandle)} from type {nameof(MethodBase)}");
         
         private static readonly MethodInfo GetIndexOfMatchingShim =
             typeof(StubHelper).GetMethod(nameof(StubHelper.GetIndexOfMatchingShim), new []{typeof(MethodBase), typeof(object)})

@@ -1,9 +1,19 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Pose.Sandbox
 {
+    public static class TClass
+    {
+        public static int Get(this List<int> list)
+        {
+            return 0;
+        }
+    }
+    
     public class Program
     {
         static void Constrain<TT>(TT a) where TT : IA{
@@ -53,8 +63,39 @@ namespace Pose.Sandbox
             public static OverridenOperatorClass operator +(OverridenOperatorClass l, OverridenOperatorClass r) => default(OverridenOperatorClass);
         }
         
+         public static IQueryable<int> GetInts()
+         {
+             return new List<int>().AsQueryable();
+         }
+             
         public static void Main(string[] args)
         {
+            var countShim = Shim
+                .Replace(() => Is.A<int[]>().Count())
+                .With((IEnumerable<int> ts) => 0);
+            
+            var getIntsShim = Shim
+                .Replace(() => Program.GetInts())
+                .With(() => new List<int> { 1 }.AsQueryable());
+
+            var tt = Shim
+                .Replace(() => Is.A<List<int>>().Get())
+                .With((List<int> list) => 20);
+
+            PoseContext.Isolate(
+                () =>
+                {
+                    var xs = new int[] { 0, 1, 2 };
+                    Console.WriteLine("X: " + xs.Length);
+                    Console.WriteLine("Y: " + xs.Count());
+
+                    var iis = Program.GetInts();
+                    Console.WriteLine(iis.LongCount());
+
+                    //Console.WriteLine("X: " + Program.GetInts().Count());
+                }, getIntsShim, countShim);
+            return;
+                         
 #if NET48
             Console.WriteLine("4.8");
             var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
