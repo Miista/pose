@@ -10,6 +10,7 @@ using Pose.Exceptions;
 using Pose.Extensions;
 using Pose.Helpers;
 using Pose.IL;
+using Pose.IL.DebugHelpers;
 
 namespace Pose.Sandbox
 {
@@ -42,6 +43,13 @@ namespace Pose.Sandbox
         // return await Task.FromResult(result);
     }
 
+    public static async Task DoWork3Async()
+    {
+        Console.WriteLine("Here");
+        await Task.Delay(1000);
+        Console.WriteLine("Here 2");
+    }
+    
     public static async Task<int> DoWork1Async()
     {
       return GetInt();
@@ -57,100 +65,170 @@ namespace Pose.Sandbox
         return stateMachineType;
     }
     
-    private static void RunAsync<TOwningType>(string methodName)
+    private static void RunAsync<TOwningType, TReturnType>(string methodName) where TReturnType : class
     {
-        var stateMachine = GetStateMachineType<TOwningType>(methodName);
-        var copyType = CopyType(stateMachine);
+        var originalMethod = typeof(TOwningType).GetMethod(methodName) ?? throw new Exception("Cannot get original method");
+        var originalMethodReturnType =
+            originalMethod.ReturnType.IsGenericType
+                ? originalMethod.ReturnType.GetGenericArguments()[0]
+                : typeof(void);
+        
+        const string startMethodName = nameof(AsyncTaskMethodBuilder<int>.Start);
+        var startMethod = (originalMethodReturnType == typeof(void)
+            ? typeof(AsyncTaskMethodBuilder).GetMethod(startMethodName)
+            : typeof(AsyncTaskMethodBuilder<>).MakeGenericType(originalMethodReturnType).GetMethod(startMethodName)) ?? throw new Exception($"Cannot get {startMethodName} method");
+        
+        const string taskPropertyName = nameof(AsyncTaskMethodBuilder<int>.Task);
+        var taskProperty = (originalMethodReturnType == typeof(void)
+            ? typeof(AsyncTaskMethodBuilder).GetProperty(taskPropertyName)
+            : typeof(AsyncTaskMethodBuilder<>).MakeGenericType(originalMethodReturnType).GetProperty(taskPropertyName)) ?? throw new Exception($"Cannot get {taskPropertyName} property");
+        
+        var stateMachineType = GetStateMachineType<TOwningType>(methodName);
+        var rewrittenStateMachine = RewriteMoveNext(stateMachineType);
+        
+        const string createMethodName = nameof(AsyncTaskMethodBuilder<int>.Create);
+        var createMethod = (originalMethodReturnType == typeof(void)
+            ? typeof(AsyncTaskMethodBuilder).GetMethod(createMethodName)
+            : typeof(AsyncTaskMethodBuilder<>).MakeGenericType(originalMethodReturnType).GetMethod(createMethodName)) ?? throw new Exception($"Cannot get {createMethodName} method");
+        
+        var stateMachineInstance = Activator.CreateInstance(rewrittenStateMachine);
+        
+        var builderField = rewrittenStateMachine.GetField("<>t__builder") ?? throw new Exception("Cannot get builder field");
+        builderField.SetValue(stateMachineInstance, createMethod.Invoke(null, Array.Empty<object>()));
+        
+        var stateField = rewrittenStateMachine.GetField("<>1__state") ?? throw new Exception("Cannot get state field");
+        stateField.SetValue(stateMachineInstance, -1);
+        
+        // var startMethod = typeof(AsyncTaskMethodBuilder<int>).GetMethod(nameof(AsyncTaskMethodBuilder<int>.Start)) ?? throw new Exception("Cannot get start method");
+        var genericMethod = startMethod.MakeGenericMethod(rewrittenStateMachine);
+        var builder = builderField.GetValue(stateMachineInstance);
+        
+        genericMethod.Invoke(builder, new object[] { stateMachineInstance });
 
-        var methodInfo = copyType.GetMethod(nameof(IAsyncStateMachine.MoveNext));
-
-        if (methodInfo != null)
-        {
-
-            var instance = Activator.CreateInstance(copyType);
-            var builderField = copyType.GetField("<>t__builder") ?? throw new Exception("Cannot get builder field");
-            builderField.SetValue(instance, AsyncTaskMethodBuilder<int>.Create());
-            var stateField = copyType.GetField("<>1__state") ?? throw new Exception("Cannot get state field");
-            stateField.SetValue(instance, -1);
-            var startMethod = typeof(AsyncTaskMethodBuilder<int>).GetMethod(nameof(AsyncTaskMethodBuilder<int>.Start)) ?? throw new Exception("Cannot get start method");
-            var genericMethod = startMethod.MakeGenericMethod(copyType);
-            genericMethod.Invoke(builderField.GetValue(instance), new object[] { instance });
-
-            var builder = builderField.GetValue(instance);
-            var taskProperty = typeof(AsyncTaskMethodBuilder<int>).GetProperty("Task") ?? throw new Exception("Cannot get task property");
-            var task = taskProperty.GetValue(builder) as Task<int> ?? throw new Exception("Cannot get task");
-            var result = task.Result;
-
-            Console.WriteLine(result);
-        }
-
-        Console.WriteLine("SUCCESS!");
+        // var taskProperty = typeof(AsyncTaskMethodBuilder<int>).GetProperty("Task") ?? throw new Exception("Cannot get task property");
+        var task = taskProperty.GetValue(builder) as TReturnType ?? throw new Exception("Cannot get task");
     }
-
     
     private static MethodBase RewriteAsync<TOwningType>(string methodName)
     {
+        var originalMethod = typeof(TOwningType).GetMethod(methodName) ?? throw new Exception("Cannot get original method");
+        var originalMethodReturnType =
+            originalMethod.ReturnType.IsGenericType
+                ? originalMethod.ReturnType.GetGenericArguments()[0]
+                : typeof(void);
+        
+        const string startMethodName = nameof(AsyncTaskMethodBuilder<int>.Start);
+        var startMethod = (originalMethodReturnType == typeof(void)
+            ? typeof(AsyncTaskMethodBuilder).GetMethod(startMethodName)
+            : typeof(AsyncTaskMethodBuilder<>).MakeGenericType(originalMethodReturnType).GetMethod(startMethodName)) ?? throw new Exception($"Cannot get {startMethodName} method");
+        
+        const string taskPropertyName = nameof(AsyncTaskMethodBuilder<int>.Task);
+        var taskProperty = (originalMethodReturnType == typeof(void)
+            ? typeof(AsyncTaskMethodBuilder).GetProperty(taskPropertyName)
+            : typeof(AsyncTaskMethodBuilder<>).MakeGenericType(originalMethodReturnType).GetProperty(taskPropertyName)) ?? throw new Exception($"Cannot get {taskPropertyName} property");
+        
+        var stateMachineType = GetStateMachineType<TOwningType>(methodName);
+        var rewrittenStateMachine = RewriteMoveNext(stateMachineType);
+        
+        const string createMethodName = nameof(AsyncTaskMethodBuilder<int>.Create);
+        var createMethod = (originalMethodReturnType == typeof(void)
+            ? typeof(AsyncTaskMethodBuilder).GetMethod(createMethodName)
+            : typeof(AsyncTaskMethodBuilder<>).MakeGenericType(originalMethodReturnType).GetMethod(createMethodName)) ?? throw new Exception($"Cannot get {createMethodName} method");
+
+        
         var stateMachine = GetStateMachineType<TOwningType>(methodName);
-        var copyType = CopyType(stateMachine);
+        var typeWithRewrittenMoveNext = RewriteMoveNext(stateMachine);
 
-        var methodInfo = copyType.GetMethod(nameof(IAsyncStateMachine.MoveNext));
+        var moveNextMethodInfo = typeWithRewrittenMoveNext.GetMethod(nameof(IAsyncStateMachine.MoveNext));
 
-        if (methodInfo != null)
+        if (moveNextMethodInfo != null)
         {
-
-            var dynamicMethod = new DynamicMethod(
-                name: StubHelper.CreateStubNameFromMethod("impl", methodInfo),
-                returnType: methodInfo.ReturnType,
-                parameterTypes: methodInfo.GetParameters().Select(p => p.ParameterType).ToArray(),
+            var rewrittenOriginalMethod = new DynamicMethod(
+                name: StubHelper.CreateStubNameFromMethod("impl", originalMethod),
+                returnType: originalMethod.ReturnType,
+                parameterTypes: originalMethod.GetParameters().Select(p => p.ParameterType).ToArray(),
                 m: StubHelper.GetOwningModule(),
                 skipVisibility: true
             );
 
-            var methodBody = methodInfo.GetMethodBody() ?? throw new MethodRewriteException($"Method {_method.Name} does not have a body");
+            var methodBody = moveNextMethodInfo.GetMethodBody() ?? throw new MethodRewriteException($"Method {moveNextMethodInfo.Name} does not have a body");
             var locals = methodBody.LocalVariables;
             
-            var ilGenerator = dynamicMethod.GetILGenerator();
-            
+            var ilGenerator = rewrittenOriginalMethod.GetILGenerator();
+
+            var index = 0;
             foreach (var local in locals)
             {
-                ilGenerator.DeclareLocal(local.LocalType, local.IsPinned);
+                if (index == 3)
+                {
+                    ilGenerator.DeclareLocal(stateMachine, local.IsPinned);
+                }
+                else
+                {
+                    ilGenerator.DeclareLocal(local.LocalType, local.IsPinned);
+                }
+                
+                index++;
             }
             
-            ilGenerator.Emit(OpCodes.Newobj, copyType);
+            ilGenerator.Emit(OpCodes.Nop);
+            
+            ilGenerator.Emit(OpCodes.Newobj, typeWithRewrittenMoveNext);
             ilGenerator.Emit(OpCodes.Stloc_0);
             ilGenerator.Emit(OpCodes.Ldloc_0);
             
-            if (methodInfo.ReturnType == typeof(void))
+            ilGenerator.Emit(OpCodes.Call, createMethod);
+            
+            var builderField = typeWithRewrittenMoveNext.GetField("<>t__builder") ?? throw new Exception("Cannot get builder field");
+            ilGenerator.Emit(OpCodes.Stfld, builderField);
+            
+            ilGenerator.Emit(OpCodes.Ldloc_0);
+            ilGenerator.Emit(OpCodes.Ldc_I4_M1);
+            var stateField = typeWithRewrittenMoveNext.GetField("<>1__state") ?? throw new Exception("Cannot get state field");
+            ilGenerator.Emit(OpCodes.Stfld, stateField);
+            
+            ilGenerator.Emit(OpCodes.Ldloc_0);
+            ilGenerator.Emit(OpCodes.Ldflda, builderField);
+            ilGenerator.Emit(OpCodes.Ldloca_S, 0);
+            
+            ilGenerator.Emit(OpCodes.Call, startMethod);
+
+            ilGenerator.Emit(OpCodes.Ldloc_0);
+            ilGenerator.Emit(OpCodes.Ldflda, builderField);
+            
+            ilGenerator.Emit(OpCodes.Call, taskProperty.GetMethod);
+            
+            ilGenerator.Emit(OpCodes.Ret);
+            
+            var ilBytes = ilGenerator.GetILBytes();
+            var browsableDynamicMethod = new BrowsableDynamicMethod(rewrittenOriginalMethod, new DynamicMethodBody(ilBytes, locals));
+            Console.WriteLine("\n" + rewrittenOriginalMethod);
+
+            foreach (var instruction in browsableDynamicMethod.GetInstructions())
             {
-                var setResultMethod = typeof(AsyncTaskMethodBuilder).GetMethod(nameof(AsyncTaskMethodBuilder.SetResult));
-                ilGenerator.Emit(OpCodes.Call, setResultMethod);
-            }
-            else
-            {
-                var setResultMethod = typeof(AsyncTaskMethodBuilder<>).MakeGenericType(methodInfo.ReturnType).GetMethod(nameof(AsyncTaskMethodBuilder.SetResult));
-                ilGenerator.Emit(OpCodes.Call, setResultMethod);
+                Console.WriteLine(instruction);
             }
             
-            ilGenerator.Emit(OpCodes.Stfld, copyType.GetField("<>t__builder"));
-            
-            var instance = Activator.CreateInstance(copyType);
-            var builderField = copyType.GetField("<>t__builder") ?? throw new Exception("Cannot get builder field");
-            builderField.SetValue(instance, AsyncTaskMethodBuilder<int>.Create());
-            var stateField = copyType.GetField("<>1__state") ?? throw new Exception("Cannot get state field");
-            stateField.SetValue(instance, -1);
-            var startMethod = typeof(AsyncTaskMethodBuilder<int>).GetMethod(nameof(AsyncTaskMethodBuilder<int>.Start)) ?? throw new Exception("Cannot get start method");
-            var genericMethod = startMethod.MakeGenericMethod(copyType);
-            genericMethod.Invoke(builderField.GetValue(instance), new object[] { instance });
+            return rewrittenOriginalMethod;
 
-            var builder = builderField.GetValue(instance);
-            var taskProperty = typeof(AsyncTaskMethodBuilder<int>).GetProperty("Task") ?? throw new Exception("Cannot get task property");
-            var task = taskProperty.GetValue(builder) as Task<int> ?? throw new Exception("Cannot get task");
-            var result = task.Result;
+            //
+            // var instance = Activator.CreateInstance(copyType);
+            // builderField.SetValue(instance, AsyncTaskMethodBuilder<int>.Create());
+            // stateField.SetValue(instance, -1);
+            // var startMethod = typeof(AsyncTaskMethodBuilder<int>).GetMethod(nameof(AsyncTaskMethodBuilder<int>.Start)) ?? throw new Exception("Cannot get start method");
+            // var genericMethod = startMethod.MakeGenericMethod(copyType);
+            // genericMethod.Invoke(builderField.GetValue(instance), new object[] { instance });
 
-            Console.WriteLine(result);
+            // var builder = builderField.GetValue(instance);
+            // var taskProperty = typeof(AsyncTaskMethodBuilder<int>).GetProperty("Task") ?? throw new Exception("Cannot get task property");
+            // var task = taskProperty.GetValue(builder) as Task<int> ?? throw new Exception("Cannot get task");
+            // var result = task.Result;
+            //
+            // Console.WriteLine(result);
         }
 
-        Console.WriteLine("SUCCESS!");
+        throw new Exception("Failed to rewrite async method");
+        // Console.WriteLine("SUCCESS!");
     }
     
     public static async Task Main(string[] args)
@@ -172,7 +250,14 @@ namespace Pose.Sandbox
 
       try
       {
-          RewriteAsync<Program>(nameof(DoWork2Async));
+          // RunAsync<Program, Task<int>>(nameof(DoWork2Async));
+          // RunAsync<Program, Task>(nameof(DoWork3Async));
+          var task = (MethodInfo) RewriteAsync<Program>(nameof(DoWork2Async));
+          var @delegate = task.CreateDelegate(typeof(Func<Task<int>>));
+          var result = @delegate.DynamicInvoke(new object[0]);
+          // @delegate.DynamicInvoke(new object[0]);
+          // var result = task.Invoke(null, new object[] { });
+          Console.WriteLine(result);
       }
       catch (Exception e)
       {
@@ -197,7 +282,7 @@ namespace Pose.Sandbox
       // }
     }
     
-    public static Type CopyType(Type stateMachine)
+    public static Type RewriteMoveNext(Type stateMachine)
     {
         var ab = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("AsyncAssembly"), AssemblyBuilderAccess.RunAndCollect);
         var mb = ab.DefineDynamicModule("AsyncModule");
@@ -497,10 +582,16 @@ namespace Pose.Sandbox
 
                                 if (instruction.OpCode == OpCodes.Call)
                                 {
-                                    if (methodInfo.IsGenericMethod
-                                        && methodInfo.DeclaringType.IsGenericType
-                                        && methodInfo.DeclaringType.GetGenericTypeDefinition() == typeof(AsyncTaskMethodBuilder<>)
-                                            && methodInfo.Name == "AwaitUnsafeOnCompleted")
+                                    if (methodInfo.DeclaringType.Name == nameof(AsyncTaskMethodBuilder) && methodInfo.Name == nameof(AsyncTaskMethodBuilder.AwaitUnsafeOnCompleted))
+                                    {
+                                        // The call is to AwaitUnsafeOnCompleted which must have the correct generic arguments
+                                        var taskAwaiterArgument = methodInfo.GetGenericArguments()[0];
+                                        methodInfo = methodInfo.GetGenericMethodDefinition().MakeGenericMethod(taskAwaiterArgument, tb);
+                                    }
+                                    else if (methodInfo.IsGenericMethod
+                                             && methodInfo.DeclaringType.IsGenericType
+                                             && methodInfo.DeclaringType.GetGenericTypeDefinition() == typeof(AsyncTaskMethodBuilder<>)
+                                             && methodInfo.Name == "AwaitUnsafeOnCompleted")
                                     {
                                         // The call is to AwaitUnsafeOnCompleted which must have the correct generic arguments
                                         var taskAwaiterArgument = methodInfo.GetGenericArguments()[0];
