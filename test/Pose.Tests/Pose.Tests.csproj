@@ -4,6 +4,8 @@
     <TargetFrameworks>net6.0;net8.0;netcoreapp2.0;netcoreapp3.0;netcoreapp3.1;net47;net48;net7.0</TargetFrameworks>
     <IsPackable>false</IsPackable>
     <LangVersion>11</LangVersion>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\..\pose.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,6 +17,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Pose\Pose.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\pose.snk">
+      <Link>pose.snk</Link>
+    </None>
   </ItemGroup>
 
 </Project>

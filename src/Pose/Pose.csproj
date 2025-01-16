@@ -4,6 +4,8 @@
     <DebugType>portable</DebugType>
     <AssemblyName>Pose</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\..\pose.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DefineConstants></DefineConstants>
@@ -12,5 +14,10 @@
     <PackageReference Include="Mono.Reflection.Core" Version="1.1.1" />
     <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.3.0" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="5.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\pose.snk">
+      <Link>pose.snk</Link>
+    </None>
   </ItemGroup>
 </Project>
