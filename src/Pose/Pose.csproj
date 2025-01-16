@@ -7,11 +7,15 @@
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>false</DebugSymbols>
     <DebugType>full</DebugType>
-    <DefineConstants></DefineConstants>
+    <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Mono.Reflection.Core" Version="1.1.1" />
     <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.3.0" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="5.0.0" />
+  </ItemGroup>
+  
+  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
+    <PackageReference Include="System.Reflection.Emit" Version="4.6.0" />
   </ItemGroup>
 </Project>

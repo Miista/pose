@@ -45,9 +45,9 @@ namespace Pose.Sandbox
 
     public static async Task DoWork3Async()
     {
-        Console.WriteLine("Here");
-        await Task.Delay(1000);
-        Console.WriteLine("Here 2");
+        Console.WriteLine("Here 3.1");
+        await Task.Delay(10);
+        Console.WriteLine("Here 3.2");
     }
     
     public static async Task<int> DoWork1Async()
@@ -55,19 +55,18 @@ namespace Pose.Sandbox
       return GetInt();
     }
 
-    private static Type GetStateMachineType<TOwningType>(string methodName)
+    private static Type GetStateMachineType(MethodBase method)
     {
-        var stateMachineType = typeof(TOwningType)
-            .GetMethod(methodName)
+        var stateMachineType = method
             ?.GetCustomAttribute<AsyncStateMachineAttribute>()
             ?.StateMachineType;
 
         return stateMachineType;
     }
 
-    private static (MethodInfo StartMethod, MethodInfo CreateMethod, PropertyInfo TaskProperty, MethodInfo OriginalMethod) GetMethods<TOwningType>(string methodName)
+    private static (MethodInfo StartMethod, MethodInfo CreateMethod, PropertyInfo TaskProperty, MethodInfo OriginalMethod) GetMethods(MethodInfo method)
     {
-        var originalMethod = typeof(TOwningType).GetMethod(methodName) ?? throw new Exception("Cannot get original method");
+        var originalMethod = method;
         var originalMethodReturnType =
             originalMethod.ReturnType.IsGenericType
                 ? originalMethod.ReturnType.GetGenericArguments()[0]
@@ -91,11 +90,11 @@ namespace Pose.Sandbox
         return (startMethod, createMethod, taskProperty, originalMethod);
     }
     
-    private static void RunAsync<TOwningType, TReturnType>(string methodName) where TReturnType : class
+    private static void RunAsync<TReturnType>(Type owningType, MethodInfo method) where TReturnType : class
     {
-        var (startMethod, createMethod, taskProperty, _) = GetMethods<TOwningType>(methodName);
+        var (startMethod, createMethod, taskProperty, _) = GetMethods(method);
         
-        var stateMachineType = GetStateMachineType<TOwningType>(methodName);
+        var stateMachineType = GetStateMachineType(method);
         var rewrittenStateMachine = RewriteMoveNext(stateMachineType);
         var stateMachineInstance = Activator.CreateInstance(rewrittenStateMachine);
         
@@ -113,11 +112,11 @@ namespace Pose.Sandbox
         var task = taskProperty.GetValue(builder) as TReturnType ?? throw new Exception("Cannot get task");
     }
     
-    private static MethodBase RewriteAsync<TOwningType>(string methodName)
+    private static MethodBase RewriteAsync(Type owningType, MethodInfo method)
     {
-        var (startMethod, createMethod, taskProperty, originalMethod) = GetMethods<TOwningType>(methodName);
+        var (startMethod, createMethod, taskProperty, originalMethod) = GetMethods(method);
 
-        var stateMachine = GetStateMachineType<TOwningType>(methodName);
+        var stateMachine = GetStateMachineType(method);
         var typeWithRewrittenMoveNext = RewriteMoveNext(stateMachine);
 
         var moveNextMethodInfo = typeWithRewrittenMoveNext.GetMethod(nameof(IAsyncStateMachine.MoveNext));
@@ -128,7 +127,7 @@ namespace Pose.Sandbox
                 name: StubHelper.CreateStubNameFromMethod("impl", originalMethod),
                 returnType: originalMethod.ReturnType,
                 parameterTypes: originalMethod.GetParameters().Select(p => p.ParameterType).ToArray(),
-                m: typeof(Program).Module,
+                m: originalMethod.Module,
                 skipVisibility: true
             );
 
@@ -141,6 +140,7 @@ namespace Pose.Sandbox
             {
                 if (locals[0].LocalType == stateMachine)
                 {
+                    // References to the original state machine must be re-targeted to the rewritten state machine
                     ilGenerator.DeclareLocal(typeWithRewrittenMoveNext, local.IsPinned);
                 }
                 else
@@ -178,6 +178,7 @@ namespace Pose.Sandbox
             
             ilGenerator.Emit(OpCodes.Ret);
             
+#if TRACE
             var ilBytes = ilGenerator.GetILBytes();
             var browsableDynamicMethod = new BrowsableDynamicMethod(rewrittenOriginalMethod, new DynamicMethodBody(ilBytes, locals));
             Console.WriteLine("\n" + rewrittenOriginalMethod);
@@ -186,27 +187,12 @@ namespace Pose.Sandbox
             {
                 Console.WriteLine(instruction);
             }
+#endif
             
             return rewrittenOriginalMethod;
-
-            //
-            // var instance = Activator.CreateInstance(copyType);
-            // builderField.SetValue(instance, AsyncTaskMethodBuilder<int>.Create());
-            // stateField.SetValue(instance, -1);
-            // var startMethod = typeof(AsyncTaskMethodBuilder<int>).GetMethod(nameof(AsyncTaskMethodBuilder<int>.Start)) ?? throw new Exception("Cannot get start method");
-            // var genericMethod = startMethod.MakeGenericMethod(copyType);
-            // genericMethod.Invoke(builderField.GetValue(instance), new object[] { instance });
-
-            // var builder = builderField.GetValue(instance);
-            // var taskProperty = typeof(AsyncTaskMethodBuilder<int>).GetProperty("Task") ?? throw new Exception("Cannot get task property");
-            // var task = taskProperty.GetValue(builder) as Task<int> ?? throw new Exception("Cannot get task");
-            // var result = task.Result;
-            //
-            // Console.WriteLine(result);
         }
 
         throw new Exception("Failed to rewrite async method");
-        // Console.WriteLine("SUCCESS!");
     }
     
     public static async Task Main(string[] args)
@@ -228,11 +214,20 @@ namespace Pose.Sandbox
 
       try
       {
-          RunAsync<Program, Task<int>>(nameof(DoWork2Async));
-          // RunAsync<Program, Task>(nameof(DoWork3Async));
-          var task = (MethodInfo) RewriteAsync<Program>(nameof(DoWork2Async));
-          var @delegate = task.CreateDelegate(typeof(Func<Task<int>>));
+          var asyncMethod = typeof(Program).GetMethod(nameof(DoWork2Async));
+          var methodRewriter = MethodRewriter.CreateRewriter(asyncMethod, false);
+          var methodBase = (MethodInfo)methodRewriter.RewriteAsync();
+          var @delegate = methodBase.CreateDelegate(typeof(Func<Task<int>>));
           var result = @delegate.DynamicInvoke(new object[0]) as Task<int>;
+          
+          // RunAsync<Task<int>>(typeof(Program), typeof(Program).GetMethod(nameof(DoWork2Async)));
+          // Console.WriteLine("---");
+          // RunAsync<Task>(typeof(Program), typeof(Program).GetMethod(nameof(DoWork3Async)));
+          // Console.WriteLine("---");
+          // var task = (MethodInfo) RewriteAsync(typeof(Program), typeof(Program).GetMethod(nameof(DoWork2Async)));
+          // var @delegate = task.CreateDelegate(typeof(Func<Task<int>>));
+          // var result = @delegate.DynamicInvoke(new object[0]) as Task<int>;
+          // Console.WriteLine("---");
           // @delegate.DynamicInvoke(new object[0]);
           // var result = task.Invoke(null, new object[] { });
           Console.WriteLine(result.Result);
@@ -293,9 +288,6 @@ namespace Pose.Sandbox
                 var ilGenerator = meth.GetILGenerator();
                 var instructions = m.GetInstructions();
 
-                ilGenerator.Emit(OpCodes.Ldstr, "Hello World");
-                ilGenerator.Emit(OpCodes.Call, typeof(Console).GetMethod("WriteLine", new Type[] { typeof(string) }));
-                
                 foreach (var clause in methodBody.ExceptionHandlingClauses)
                 {
                     var handler = new ExceptionHandler
@@ -616,9 +608,6 @@ namespace Pose.Sandbox
 
       
                 ilGenerator.Emit(OpCodes.Ret);
-
-                Console.WriteLine();
-                Console.WriteLine();
             });
         
         return tb.CreateType();
