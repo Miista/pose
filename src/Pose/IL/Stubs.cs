@@ -84,7 +84,7 @@ namespace Pose.IL
                 true);
 
 #if TRACE
-            Console.WriteLine("\n" + method);
+            // Console.WriteLine("\n" + method);
 #endif
             
             var ilGenerator = stub.GetILGenerator();

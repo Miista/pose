@@ -375,8 +375,12 @@ namespace Pose.IL
         {
             var declaringType = member.DeclaringType ?? throw new Exception($"Type {member.Name} does not have a {nameof(MethodBase.DeclaringType)}");
 
-            if (declaringType.Namespace == typeof(AsyncTaskMethodBuilder).Namespace && declaringType.Name == "AsyncMethodBuilderCore") return false;
-            
+            if (declaringType.Namespace == typeof(AsyncTaskMethodBuilder).Namespace)
+            {
+                if (declaringType.Name == "AsyncMethodBuilderCore") return false;
+                if (declaringType.Name == typeof(AsyncTaskMethodBuilder<>).Name) return false;
+            }
+
             // Don't attempt to rewrite inaccessible constructors in System.Private.CoreLib/mscorlib
             if (!declaringType.IsPublic) return true;
             if (!member.IsPublic && !member.IsFamily && !member.IsFamilyOrAssembly) return true;
