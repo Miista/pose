@@ -21,18 +21,25 @@ namespace Pose
             Shims = shims;
 
             var delegateType = typeof(Action<>).MakeGenericType(entryPoint.Target.GetType());
-            var rewriter = MethodRewriter.CreateRewriter(entryPoint.Method, false);
+            var rewriter = ExpressionTreeMethodRewriter.CreateRewriter(entryPoint.Method, false);
             
 #if TRACE
             Console.WriteLine("----------------------------- Rewriting ----------------------------- ");
 #endif
-            var methodInfo = (MethodInfo)(rewriter.Rewrite());
+            if (entryPoint.Target == null)
+            {
+                rewriter.Rewrite().DynamicInvoke();
+            }
+            else
+            {
+                rewriter.Rewrite().DynamicInvoke(entryPoint.Target);
+            }
 
 #if TRACE
             Console.WriteLine("----------------------------- Invoking ----------------------------- ");
 #endif
             
-            methodInfo.CreateDelegate(delegateType).DynamicInvoke(entryPoint.Target);
+            // methodInfo.CreateDelegate(delegateType).DynamicInvoke(entryPoint.Target);
         }
     }
 }
