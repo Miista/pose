@@ -55,7 +55,17 @@ namespace Pose.Sandbox
         
         public static void Main(string[] args)
         {
-#if NET48
+#if NET8_0
+            Console.WriteLine(".NET 8");
+            
+            PoseContext.Isolate(
+                () =>
+                {
+                    Console.WriteLine("Hello, World!");
+                }
+                , Shim.Replace(() => Console.WriteLine(Is.A<string>())).With(() => Console.WriteLine("Yo"))
+            );
+#elif NET48
             Console.WriteLine("4.8");
             var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
             PoseContext.Isolate(

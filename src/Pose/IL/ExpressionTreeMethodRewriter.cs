@@ -1065,9 +1065,6 @@ namespace Pose.IL
 
         private void TransformNewobj(State state, ConstructorInfo constructorInfo)
         {
-            var shimReplacementMethod = StubHelper.GetShimReplacementMethod(StubHelper.GetIndexOfMatchingShim(constructorInfo, null));
-            state.Stack.Push(Expression.Call(shimReplacementMethod));
-            
             List<Expression> args = new List<Expression>();
             for (int i = 0; i < constructorInfo.GetParameters().Length; i++)
             {
@@ -1168,21 +1165,63 @@ namespace Pose.IL
             args.Reverse();
             Expression instance = (methodInfo.IsStatic) ? null : state.Stack.Pop();
 
+            var firstOrDefault = PoseContext.Shims.FirstOrDefault(s => s.Original == memberInfo);
+
+            var returnTarget = Expression.Label();
+            
             if (methodInfo.ReturnType == typeof(void))
             {
-                state.Body.Add(
-                    Expression.Call(
-                        instance, methodInfo, args
-                    )
-                );
+                if (firstOrDefault != null)
+                {
+                    state.Body.Add(
+                        Expression.Invoke(
+                            firstOrDefault.ReplacementExpression
+                        )
+                    );
+                }
+                else
+                {
+                    state.Body.Add(
+                        Expression.Call(
+                            instance,
+                            methodInfo,
+                            args
+                        )
+                    );
+                }
             }
             else
             {
-                state.Stack.Push(
-                    Expression.Call(
-                        instance, methodInfo, args
-                    )
-                );
+                if (firstOrDefault != null)
+                {
+                    if (firstOrDefault.ReplacementExpression.NodeType == ExpressionType.Lambda)
+                    {
+                        state.Stack.Push(
+                            Expression.Invoke(
+                                firstOrDefault.ReplacementExpression
+                            )
+                        );
+                    }
+                    else
+                    {
+                        state.Body.Add(
+                            Expression.Invoke(
+                                firstOrDefault.ReplacementExpression,
+                                instance
+                            )
+                        );
+                    }
+                }
+                else
+                {
+                    state.Stack.Push(
+                        Expression.Call(
+                            instance,
+                            methodInfo,
+                            args
+                        )
+                    );
+                }
             }
         }
 

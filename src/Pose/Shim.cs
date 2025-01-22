@@ -14,6 +14,7 @@ namespace Pose
         private object _instance;
         private Type _type;
         private bool _setter;
+        private Expression _expression;
 
         internal MethodBase Original
         {
@@ -47,13 +48,21 @@ namespace Pose
             }
         }
 
-        private Shim(MethodBase original, object instanceOrType)
+        internal Expression Expression
+        {
+            get { return _expression; }
+        }
+        
+        internal Expression ReplacementExpression { get; private set; }
+        
+        private Shim(MethodBase original, object instanceOrType, Expression expression)
         {
             _original = original;
             if (instanceOrType is Type type)
                 _type = type;
             else
                 _instance = instanceOrType;
+            _expression = expression;
         }
 
         [ExcludeFromCodeCoverage(Justification = "Forwards to ReplaceImpl")]
@@ -67,13 +76,21 @@ namespace Pose
         private static Shim ReplaceImpl<T>(Expression<T> expression, bool setter)
         {
             var methodBase = ShimHelper.GetMethodFromExpression(expression.Body, setter, out var instance);
-            return new Shim(methodBase, instance) { _setter = setter };
+            return new Shim(methodBase, instance, expression) { _setter = setter };
         }
 
         private Shim WithImpl(Delegate replacement)
         {
             _replacement = replacement;
             ShimHelper.ValidateReplacementMethodSignature(this._original, this._replacement.Method, _instance?.GetType() ?? _type, _setter);
+            return this;
+        }
+        
+        private Shim WithImpl(Expression replacement)
+        {
+            ReplacementExpression = replacement;
+            //_replacement = replacement;
+            //ShimHelper.ValidateReplacementMethodSignature(this._original, this._replacement.Method, _instance?.GetType() ?? _type, _setter);
             return this;
         }
     }
