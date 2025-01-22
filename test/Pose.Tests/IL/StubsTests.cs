@@ -106,7 +106,7 @@ namespace Pose.Tests
             var methodInfo = thisType.GetMethod(nameof(IB.GetInt));
 
             // Act
-            var dynamicMethod = Stubs.GenerateStubForVirtualCall(methodInfo, typeof(B).GetTypeInfo());
+            var dynamicMethod = Stubs.GenerateStubForVirtualCall(methodInfo, typeof(B).GetTypeInfo(), typeof(IB));
             
             // Assert
             var dynamicParameters = dynamicMethod.GetParameters();

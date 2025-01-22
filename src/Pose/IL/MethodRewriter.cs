@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Collections.Generic;
 using System.Reflection;
@@ -27,20 +28,28 @@ namespace Pose.IL
         
         private int _exceptionBlockLevel;
         private TypeInfo _constrainedType;
+        
+        /**
+         * The actual type of the object being dispatched on.
+         * This is only used when resolving virtual calls on constrained types.
+         */
+        private Type _actualType;
 
-        private MethodRewriter(MethodBase method, Type owningType, bool isInterfaceDispatch)
+        private MethodRewriter(MethodBase method, Type owningType, bool isInterfaceDispatch, Type actualType)
         {
             _method = method ?? throw new ArgumentNullException(nameof(method));
             _owningType = owningType ?? throw new ArgumentNullException(nameof(owningType));
             _isInterfaceDispatch = isInterfaceDispatch;
+            _actualType = actualType;
         }
 
-        public static MethodRewriter CreateRewriter(MethodBase method, bool isInterfaceDispatch)
+        public static MethodRewriter CreateRewriter(MethodBase method, bool isInterfaceDispatch, Type actualType = null)
         {
             return new MethodRewriter(
                 method: method,
                 owningType: method.DeclaringType,
-                isInterfaceDispatch: isInterfaceDispatch
+                isInterfaceDispatch: isInterfaceDispatch,
+                actualType: actualType
             );
         }
 
@@ -364,6 +373,12 @@ namespace Pose.IL
         {
             var declaringType = member.DeclaringType ?? throw new Exception($"Type {member.Name} does not have a {nameof(MethodBase.DeclaringType)}");
 
+            if (declaringType.IsGenericType)
+            {
+                // Don't rewrite methods on ConcurrentDictionary
+                if (declaringType.GetGenericTypeDefinition() == typeof(ConcurrentDictionary<,>)) return true;
+            }
+            
             // Don't attempt to rewrite inaccessible constructors in System.Private.CoreLib/mscorlib
             if (!declaringType.IsPublic) return true;
             if (!member.IsPublic && !member.IsFamily && !member.IsFamilyOrAssembly) return true;
@@ -426,8 +441,9 @@ namespace Pose.IL
             {
                 if (_constrainedType != null)
                 {
-                    ilGenerator.Emit(OpCodes.Call, Stubs.GenerateStubForVirtualCall(methodInfo, _constrainedType));
+                    ilGenerator.Emit(OpCodes.Call, Stubs.GenerateStubForVirtualCall(methodInfo, _constrainedType, _actualType));
                     _constrainedType = null;
+                    _actualType = null;
                     return;
                 }
 

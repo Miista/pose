@@ -27,7 +27,7 @@ namespace Pose.IL
             ?? throw new Exception($"Cannot get method {nameof(RuntimeHelpers.GetUninitializedObject)} from type {nameof(RuntimeHelpers)}");
         
         private static readonly MethodInfo CreateRewriter =
-            typeof(MethodRewriter).GetMethod(nameof(MethodRewriter.CreateRewriter), new Type[] { typeof(MethodBase), typeof(bool) })
+            typeof(MethodRewriter).GetMethod(nameof(MethodRewriter.CreateRewriter), new Type[] { typeof(MethodBase), typeof(bool), typeof(Type) })
             ?? throw new Exception($"Cannot get method {nameof(MethodRewriter.CreateRewriter)} from type {nameof(MethodRewriter)}");
 
         private static readonly MethodInfo GetMethodFromHandle =
@@ -55,17 +55,19 @@ namespace Pose.IL
             ?? throw new Exception($"Cannot get method {nameof(MethodRewriter.Rewrite)} from type {nameof(MethodRewriter)}");
         
         private static readonly MethodInfo DeVirtualizeMethod =
-            typeof(StubHelper).GetMethod(nameof(StubHelper.DeVirtualizeMethod), new Type[] { typeof(object), typeof(MethodInfo) })
+            typeof(StubHelper).GetMethod(nameof(StubHelper.DeVirtualizeMethod), new Type[] { typeof(object), typeof(MethodInfo), typeof(Type) })
             ?? throw new Exception($"Cannot get method {nameof(StubHelper.DeVirtualizeMethod)} from type {nameof(StubHelper)}");
 
         public static DynamicMethod GenerateStubForDirectCall(MethodBase method)
         {
             var returnType = method.IsConstructor ? typeof(void) : (method as MethodInfo).ReturnType;
             var signatureParamTypes = new List<Type>();
+
+            Type thisType = null;
             
             if (!method.IsStatic)
             {
-                var thisType = method.DeclaringType ?? throw new Exception($"Method {method.Name} does not have a {nameof(MethodBase.DeclaringType)}");
+                thisType = method.DeclaringType ?? throw new Exception($"Method {method.Name} does not have a {nameof(MethodBase.DeclaringType)}");
                 if (thisType.IsValueType)
                 {
                     thisType = thisType.MakeByRefType();
@@ -151,6 +153,16 @@ namespace Pose.IL
             ilGenerator.MarkLabel(rewriteLabel);
             ilGenerator.Emit(OpCodes.Ldloc_0);
             ilGenerator.Emit(OpCodes.Ldc_I4_0);
+
+            if (thisType == null)
+            {
+                ilGenerator.Emit(OpCodes.Ldnull);
+            }
+            else
+            {
+                ilGenerator.Emit(OpCodes.Ldtoken, thisType);
+            }
+
             ilGenerator.Emit(OpCodes.Call, CreateRewriter);
             ilGenerator.Emit(OpCodes.Call, Rewrite);
             // ilGenerator.Emit(OpCodes.Call, s_createRewriterMethod);
@@ -179,14 +191,14 @@ namespace Pose.IL
             return stub;
         }
 
-        public static DynamicMethod GenerateStubForVirtualCall(MethodInfo method, TypeInfo constrainedType)
+        public static DynamicMethod GenerateStubForVirtualCall(MethodInfo method, TypeInfo constrainedType, Type actualType)
         {
             if (method == null) throw new ArgumentNullException(nameof(method));
             if (constrainedType == null) throw new ArgumentNullException(nameof(constrainedType));
             
             var thisType = constrainedType.MakeByRefType();
             var methodDeclaringType = method.DeclaringType ?? throw new Exception($"Method {method.Name} does not have a {nameof(MethodBase.DeclaringType)}");
-            var actualMethod = StubHelper.DeVirtualizeMethod(constrainedType, method);
+            var actualMethod = StubHelper.DeVirtualizeMethod(constrainedType, method, actualType);
             var actualMethodDeclaringType = actualMethod.DeclaringType ?? throw new Exception($"Method {actualMethod.Name} does not have a {nameof(MethodBase.DeclaringType)}");
 
             var signatureParamTypes = new List<Type>();
@@ -260,6 +272,7 @@ namespace Pose.IL
             ilGenerator.MarkLabel(rewriteLabel);
             ilGenerator.Emit(OpCodes.Ldloc_0);
             ilGenerator.Emit(methodDeclaringType.IsInterface ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
+            ilGenerator.Emit(OpCodes.Ldtoken, thisType);
             ilGenerator.Emit(OpCodes.Call, CreateRewriter);
             ilGenerator.Emit(OpCodes.Call, Rewrite);
             ilGenerator.Emit(OpCodes.Castclass, typeof(MethodInfo));
@@ -358,6 +371,7 @@ namespace Pose.IL
             // Resolve virtual method to object type
             ilGenerator.Emit(OpCodes.Ldarg_0);
             ilGenerator.Emit(OpCodes.Ldloc_0);
+            ilGenerator.Emit(OpCodes.Ldtoken, thisType);
             ilGenerator.Emit(OpCodes.Call, DeVirtualizeMethod);
             ilGenerator.Emit(OpCodes.Stloc_0);
             
@@ -387,6 +401,7 @@ namespace Pose.IL
             ilGenerator.MarkLabel(rewriteLabel);
             ilGenerator.Emit(OpCodes.Ldloc_0);
             ilGenerator.Emit(declaringType.IsInterface ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
+            ilGenerator.Emit(OpCodes.Ldtoken, thisType);
             ilGenerator.Emit(OpCodes.Call, CreateRewriter);
             ilGenerator.Emit(OpCodes.Call, Rewrite);
             ilGenerator.Emit(OpCodes.Castclass, typeof(MethodInfo));
@@ -517,6 +532,17 @@ namespace Pose.IL
             
             ilGenerator.Emit(OpCodes.Ldloc_2);
             ilGenerator.Emit(OpCodes.Ldc_I4_0);
+            
+            if (thisType == null)
+            {
+                ilGenerator.Emit(OpCodes.Ldnull);
+            }
+            else
+            {
+                ilGenerator.Emit(OpCodes.Ldtoken, thisType);
+            }
+            
+            // ilGenerator.Emit(OpCodes.Ldtoken, thisType);
             ilGenerator.Emit(OpCodes.Call, CreateRewriter);
             ilGenerator.Emit(OpCodes.Call, Rewrite);
             ilGenerator.Emit(OpCodes.Castclass, typeof(MethodInfo));
@@ -698,6 +724,17 @@ namespace Pose.IL
             // Rewrite method
             ilGenerator.MarkLabel(rewriteLabel);
             ilGenerator.Emit(OpCodes.Ldc_I4_0);
+            
+            if (method.DeclaringType == null)
+            {
+                ilGenerator.Emit(OpCodes.Ldnull);
+            }
+            else
+            {
+                ilGenerator.Emit(OpCodes.Ldtoken, method.DeclaringType);
+            }
+            
+            // ilGenerator.Emit(OpCodes.Ldtoken, typeof(void));
             ilGenerator.Emit(OpCodes.Call, CreateRewriter);
             ilGenerator.Emit(OpCodes.Call, Rewrite);
 
@@ -750,11 +787,13 @@ namespace Pose.IL
             // Resolve virtual method to object type
             ilGenerator.Emit(OpCodes.Ldarg_0);
             ilGenerator.Emit(OpCodes.Ldloc_0);
+            ilGenerator.Emit(OpCodes.Ldtoken, declaringType);
             ilGenerator.Emit(OpCodes.Call, DeVirtualizeMethod);
 
             // Rewrite resolved method
             ilGenerator.MarkLabel(rewriteLabel);
             ilGenerator.Emit(declaringType.IsInterface ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
+            ilGenerator.Emit(OpCodes.Ldtoken, declaringType);
             ilGenerator.Emit(OpCodes.Call, CreateRewriter);
             ilGenerator.Emit(OpCodes.Call, Rewrite);
 

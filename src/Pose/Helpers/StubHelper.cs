@@ -64,12 +64,12 @@ namespace Pose.Helpers
         public static int GetIndexOfMatchingShim(MethodBase methodBase, object obj)
             => GetIndexOfMatchingShim(methodBase, methodBase.DeclaringType, obj);
 
-        public static MethodInfo DeVirtualizeMethod(object obj, MethodInfo virtualMethod)
+        public static MethodInfo DeVirtualizeMethod(object obj, MethodInfo virtualMethod, Type actualType)
         {
-            return DeVirtualizeMethod(obj.GetType(), virtualMethod);
+            return DeVirtualizeMethod(obj.GetType(), virtualMethod, actualType);
         }
 
-        public static MethodInfo DeVirtualizeMethod(Type thisType, MethodInfo virtualMethod)
+        public static MethodInfo DeVirtualizeMethod(Type thisType, MethodInfo virtualMethod, Type actualType)
         {
             if (thisType == virtualMethod.DeclaringType) return virtualMethod;
             
@@ -77,6 +77,12 @@ namespace Pose.Helpers
             var types = virtualMethod.GetParameters().Select(p => p.ParameterType).ToArray();
             
             var method = thisType.GetMethod(virtualMethod.Name, bindingFlags, null, types, null);
+
+            if (method == null && actualType != null)
+            {
+                // Attempt to get the method from the actual type
+                method = actualType.GetMethod(virtualMethod.Name, bindingFlags, null, types, null);
+            }
             
             if (method == null)
             {
@@ -94,6 +100,7 @@ namespace Pose.Helpers
         private static MethodInfo GetExplicitlyImplementedMethod(Type interfaceType, Type type, MethodInfo virtualMethod)
         {
             if (type == null) throw new ArgumentNullException(nameof(type));
+            if (interfaceType == null) throw new ArgumentNullException(nameof(interfaceType));
             if (virtualMethod == null) throw new ArgumentNullException(nameof(virtualMethod));
             if (!interfaceType.IsInterface) throw new InvalidOperationException($"{interfaceType} is not an interface.");
 

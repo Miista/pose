@@ -92,7 +92,7 @@ namespace Pose.Tests
             var methodInfo = type.GetMethod(nameof(StubHelperTests.Can_get_runtime_method_for_virtual_method));
             
             // Act
-            var devirtualizedMethodInfo = StubHelper.DeVirtualizeMethod(type, methodInfo);
+            var devirtualizedMethodInfo = StubHelper.DeVirtualizeMethod(type, methodInfo, type);
             
             // Assert
             devirtualizedMethodInfo.Should().BeSameAs(methodInfo);
