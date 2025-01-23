@@ -12,6 +12,93 @@ namespace Pose.Tests
     
     public class MethodRewriterTests
     {
+        public class MethodsOnBaseObjectTests
+        {
+            private class BasicObject { }
+
+            [Fact]
+            public void Can_rewrite_calls_on_base_object()
+            {
+                var type = typeof(BasicObject);
+                var methodName = nameof(ToString);
+                var delegateType = typeof(Func<BasicObject, string>);
+                
+                // Arrange
+                PoseContext.Shims = new Shim[0];
+
+                var instance = new BasicObject();
+                var methodInfo = type.GetMethod(methodName);
+                var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false, type);
+                var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+                var func = dynamicMethod.CreateDelegate(delegateType);
+
+                // Act
+                var result = func.DynamicInvoke(instance) as string;
+
+                // Assert
+                result.Should().NotBeNullOrWhiteSpace();
+                result.Should().Be(instance.ToString());
+            }
+            
+            [Fact]
+            public void Can_rewrite_call_to_ToString()
+            { 
+                // Arrange
+                PoseContext.Shims = new Shim[0];
+
+                var instance = new BasicObject();
+                var methodInfo = typeof(BasicObject).GetMethod(nameof(ToString));
+                var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false, typeof(BasicObject));
+                var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+                var func = dynamicMethod.CreateDelegate(typeof(Func<BasicObject, string>));
+
+                // Act
+                var result = func.DynamicInvoke(instance) as string;
+
+                // Assert
+                result.Should().NotBeNullOrWhiteSpace();
+                result.Should().Be(instance.ToString());
+            }
+            
+            [Fact]
+            public void Can_rewrite_call_to_Equals()
+            { 
+                // Arrange
+                PoseContext.Shims = new Shim[0];
+
+                var instance = new BasicObject();
+                var methodInfo = typeof(BasicObject).GetMethod(nameof(Equals));
+                var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false, typeof(BasicObject));
+                var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+                var func = dynamicMethod.CreateDelegate(typeof(Func<BasicObject, BasicObject, bool>));
+
+                // Act
+                var result = func.DynamicInvoke(instance, instance) as bool?;
+
+                // Assert
+                result.Should().BeTrue(because: "the two instances are the same");
+            }
+            
+            [Fact]
+            public void Can_rewrite_call_to_GetHashCode()
+            { 
+                // Arrange
+                PoseContext.Shims = new Shim[0];
+
+                var instance = new BasicObject();
+                var methodInfo = typeof(BasicObject).GetMethod(nameof(GetHashCode));
+                var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false, typeof(BasicObject));
+                var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+                var func = dynamicMethod.CreateDelegate(typeof(Func<BasicObject, int>));
+
+                // Act
+                var result = func.DynamicInvoke(instance) as int?;
+
+                // Assert
+                result.Should().Be(instance.GetHashCode(), because: "the hash code is the default implementation");
+            }
+        }
+        
         private class ClassWithStaticMethod
         {
             public static string Now { get; } = "?";
@@ -68,40 +155,57 @@ namespace Pose.Tests
             list[0].Should().BeEquivalentTo(item);
         }
 
-        private interface IInterface
+        private class DictionaryWrapper<TKey, TValue>
         {
-            void Add(string item);
-        }
-        
-        private class Instance : IInterface
-        {
-            public readonly List<string> List = new List<string>();
-            
-            public void Add(string item)
+            public Dictionary<TKey, TValue> Add(TKey key, TValue value)
             {
-                List.Add(item);
+                var dictionary = new Dictionary<TKey, TValue>();
+                
+                // This calls to GetHashCode via Add -> TryInsert
+                dictionary.Add(key, value);
+                
+                return dictionary;
             }
         }
-        
+
         [Fact]
         public void Can_rewrite_interface_method()
         {
             // Arrange
             const string item = "Item 1";
-
-            PoseContext.Shims = new Shim[0];
-            var instance = new Instance();
-            var methodInfo = typeof(Instance).GetMethod(nameof(instance.Add));
-            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false, typeof(Instance));
+            
+            var list = new List<string>();
+            var methodInfo = typeof(List<string>).GetMethod(nameof(IList<string>.Insert));
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, true, typeof(List<string>));
             var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
-            var func = dynamicMethod.CreateDelegate(typeof(Action<Instance, string>));
+            var func = dynamicMethod.CreateDelegate(typeof(Action<List<string>, int, string>));
 
             // Act
-            func.DynamicInvoke(instance, item);
+            func.DynamicInvoke(list, 0, item);
 
             // Assert
-            instance.List.Should().HaveCount(1);
-            instance.List[0].Should().BeEquivalentTo(item);
+            list.Should().HaveCount(1);
+            list[0].Should().BeEquivalentTo(item);
+        }
+
+        [Fact]
+        public void Can_rewrite_call_to_GetHashCode_via_Dictionary()
+        { 
+            // Arrange
+            PoseContext.Shims = new Shim[0];
+
+            var instance = new DictionaryWrapper<string, string>();
+            var methodInfo = typeof(DictionaryWrapper<string, string>).GetMethod(nameof(DictionaryWrapper<string, string>.Add));
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false, typeof(DictionaryWrapper<string, string>));
+            var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+            var func = dynamicMethod.CreateDelegate(typeof(Func<DictionaryWrapper<string, string>, string, string, Dictionary<string, string>>));
+
+            // Act
+            var result = func.DynamicInvoke(instance, "Hello", "World") as Dictionary<string, string>;
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().HaveCount(1);
         }
 
         [Fact]

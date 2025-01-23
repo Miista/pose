@@ -78,6 +78,12 @@ namespace Pose.Helpers
             
             var method = thisType.GetMethod(virtualMethod.Name, bindingFlags, null, types, null);
 
+            // This was helpful sometimes
+            // if (method == null)
+            // {
+            //     method = virtualMethod.DeclaringType?.GetMethod(virtualMethod.Name, bindingFlags, null, types, null);
+            // }
+            
             if (method == null && actualType != null)
             {
                 // Attempt to get the method from the actual type
@@ -89,12 +95,10 @@ namespace Pose.Helpers
                 // Attempt to get the method from an explicitly implemented interface
                 var interfaces = thisType.GetInterfaces();
                 var declaringInterface = interfaces.FirstOrDefault(i => i == virtualMethod.DeclaringType);
-                var explicitlyImplementedMethod = GetExplicitlyImplementedMethod(declaringInterface, thisType, virtualMethod);
-            
-                return explicitlyImplementedMethod;
+                method = GetExplicitlyImplementedMethod(declaringInterface, thisType, virtualMethod);
             }
 
-            return method;
+            return method ?? throw new Exception($"Cannot devirtualize method '{virtualMethod.Name}'.");
         }
 
         private static MethodInfo GetExplicitlyImplementedMethod(Type interfaceType, Type type, MethodInfo virtualMethod)
