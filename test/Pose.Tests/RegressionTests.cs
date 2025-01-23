@@ -77,12 +77,9 @@ namespace Pose.Tests
         {
             var a = new CollectionClass();
             var fooObject = new FooObject("lol");
-            Console.WriteLine("a");
             CollectionClass.CollectionClassCollection["foo"] =
                 new ConcurrentDictionary<ICollectionClass, ICollectionClass> { [a] = new CollectionClass() };
-            Console.WriteLine("b");
             var foo = CollectionClass.SomeStaticMethod(a);
-            Console.WriteLine("c");
             return fooObject.FooRecall();
         }
     }
@@ -94,16 +91,10 @@ namespace Pose.Tests
 
         public static ICollectionClass SomeStaticMethod(ICollectionClass obj)
         {
-            Console.WriteLine(CollectionClassCollection == null);
-            Console.WriteLine(CollectionClassCollection?.ContainsKey("foo") ?? true);
-            
             if (CollectionClassCollection["foo"].TryGetValue(obj, out ICollectionClass returnedObj))
             {
-                Console.WriteLine("Here");
                 return returnedObj;
             }
-
-            Console.WriteLine("Not here");
 
             return null;
         }

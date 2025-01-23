@@ -63,11 +63,9 @@ namespace Pose.IL
             var returnType = method.IsConstructor ? typeof(void) : (method as MethodInfo).ReturnType;
             var signatureParamTypes = new List<Type>();
 
-            Type thisType = null;
-            
             if (!method.IsStatic)
             {
-                thisType = method.DeclaringType ?? throw new Exception($"Method {method.Name} does not have a {nameof(MethodBase.DeclaringType)}");
+                var thisType = method.DeclaringType ?? throw new Exception($"Method {method.Name} does not have a {nameof(MethodBase.DeclaringType)}");
                 if (thisType.IsValueType)
                 {
                     thisType = thisType.MakeByRefType();
@@ -153,16 +151,7 @@ namespace Pose.IL
             ilGenerator.MarkLabel(rewriteLabel);
             ilGenerator.Emit(OpCodes.Ldloc_0);
             ilGenerator.Emit(OpCodes.Ldc_I4_0);
-
-            if (thisType == null)
-            {
-                ilGenerator.Emit(OpCodes.Ldnull);
-            }
-            else
-            {
-                ilGenerator.Emit(OpCodes.Ldtoken, thisType);
-            }
-
+            ilGenerator.Emit(OpCodes.Ldnull);
             ilGenerator.Emit(OpCodes.Call, CreateRewriter);
             ilGenerator.Emit(OpCodes.Call, Rewrite);
             // ilGenerator.Emit(OpCodes.Call, s_createRewriterMethod);
@@ -371,7 +360,7 @@ namespace Pose.IL
             // Resolve virtual method to object type
             ilGenerator.Emit(OpCodes.Ldarg_0);
             ilGenerator.Emit(OpCodes.Ldloc_0);
-            ilGenerator.Emit(OpCodes.Ldtoken, thisType);
+            ilGenerator.Emit(OpCodes.Ldnull);
             ilGenerator.Emit(OpCodes.Call, DeVirtualizeMethod);
             ilGenerator.Emit(OpCodes.Stloc_0);
             
@@ -401,7 +390,7 @@ namespace Pose.IL
             ilGenerator.MarkLabel(rewriteLabel);
             ilGenerator.Emit(OpCodes.Ldloc_0);
             ilGenerator.Emit(declaringType.IsInterface ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
-            ilGenerator.Emit(OpCodes.Ldtoken, thisType);
+            ilGenerator.Emit(OpCodes.Ldnull);
             ilGenerator.Emit(OpCodes.Call, CreateRewriter);
             ilGenerator.Emit(OpCodes.Call, Rewrite);
             ilGenerator.Emit(OpCodes.Castclass, typeof(MethodInfo));
@@ -532,17 +521,7 @@ namespace Pose.IL
             
             ilGenerator.Emit(OpCodes.Ldloc_2);
             ilGenerator.Emit(OpCodes.Ldc_I4_0);
-            
-            if (thisType == null)
-            {
-                ilGenerator.Emit(OpCodes.Ldnull);
-            }
-            else
-            {
-                ilGenerator.Emit(OpCodes.Ldtoken, thisType);
-            }
-            
-            // ilGenerator.Emit(OpCodes.Ldtoken, thisType);
+            ilGenerator.Emit(OpCodes.Ldnull);
             ilGenerator.Emit(OpCodes.Call, CreateRewriter);
             ilGenerator.Emit(OpCodes.Call, Rewrite);
             ilGenerator.Emit(OpCodes.Castclass, typeof(MethodInfo));
@@ -734,7 +713,6 @@ namespace Pose.IL
                 ilGenerator.Emit(OpCodes.Ldtoken, method.DeclaringType);
             }
             
-            // ilGenerator.Emit(OpCodes.Ldtoken, typeof(void));
             ilGenerator.Emit(OpCodes.Call, CreateRewriter);
             ilGenerator.Emit(OpCodes.Call, Rewrite);
 
@@ -787,13 +765,14 @@ namespace Pose.IL
             // Resolve virtual method to object type
             ilGenerator.Emit(OpCodes.Ldarg_0);
             ilGenerator.Emit(OpCodes.Ldloc_0);
-            ilGenerator.Emit(OpCodes.Ldtoken, declaringType);
+            ilGenerator.Emit(OpCodes.Ldnull);
             ilGenerator.Emit(OpCodes.Call, DeVirtualizeMethod);
 
             // Rewrite resolved method
             ilGenerator.MarkLabel(rewriteLabel);
             ilGenerator.Emit(declaringType.IsInterface ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
-            ilGenerator.Emit(OpCodes.Ldtoken, declaringType);
+            ilGenerator.Emit(OpCodes.Ldnull);
+            // ilGenerator.Emit(OpCodes.Ldtoken, declaringType);
             ilGenerator.Emit(OpCodes.Call, CreateRewriter);
             ilGenerator.Emit(OpCodes.Call, Rewrite);
 

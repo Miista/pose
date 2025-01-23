@@ -22,7 +22,7 @@ namespace Pose.Tests
         {
             // Arrange
             var methodInfo = typeof(ClassWithStaticMethod).GetMethod("get_Now");
-            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false, typeof(ClassWithStaticMethod));
 
             // Act
             var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
@@ -37,7 +37,7 @@ namespace Pose.Tests
         {
             // Arrange
             var methodInfo = typeof(Exception).GetMethod("get_Message");
-            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false, typeof(Exception));
 
             // Act
             var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
@@ -56,7 +56,7 @@ namespace Pose.Tests
             
             var list = new List<string>();
             var methodInfo = typeof(List<string>).GetMethod(nameof(List<string>.Add));
-            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false, typeof(List<string>));
             var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
             var func = dynamicMethod.CreateDelegate(typeof(Action<List<string>, string>));
 
@@ -68,12 +68,48 @@ namespace Pose.Tests
             list[0].Should().BeEquivalentTo(item);
         }
 
+        private interface IInterface
+        {
+            void Add(string item);
+        }
+        
+        private class Instance : IInterface
+        {
+            public readonly List<string> List = new List<string>();
+            
+            public void Add(string item)
+            {
+                List.Add(item);
+            }
+        }
+        
+        [Fact]
+        public void Can_rewrite_interface_method()
+        {
+            // Arrange
+            const string item = "Item 1";
+
+            PoseContext.Shims = new Shim[0];
+            var instance = new Instance();
+            var methodInfo = typeof(Instance).GetMethod(nameof(instance.Add));
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false, typeof(Instance));
+            var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
+            var func = dynamicMethod.CreateDelegate(typeof(Action<Instance, string>));
+
+            // Act
+            func.DynamicInvoke(instance, item);
+
+            // Assert
+            instance.List.Should().HaveCount(1);
+            instance.List[0].Should().BeEquivalentTo(item);
+        }
+
         [Fact]
         public void Can_rewrite_constructor()
         {
             // Arrange
             var constructorInfo = typeof(List<string>).GetConstructor(Type.EmptyTypes);
-            var methodRewriter = MethodRewriter.CreateRewriter(constructorInfo, false);
+            var methodRewriter = MethodRewriter.CreateRewriter(constructorInfo, false, typeof(List<string>));
             
             // Act
             var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
@@ -92,7 +128,7 @@ namespace Pose.Tests
         {
             // Arrange
             var methodInfo = typeof(MethodRewriterTests).GetMethod(nameof(TryCatch_ReturnsFromTry));
-            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false, null);
             var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
 
             // Act
@@ -121,7 +157,7 @@ namespace Pose.Tests
         {
             // Arrange
             var methodInfo = typeof(MethodRewriterTests).GetMethod(nameof(TryCatch_ReturnsFromCatch));
-            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false, typeof(MethodRewriterTests));
             var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
 
             // Act
@@ -150,7 +186,7 @@ namespace Pose.Tests
         {
             // Arrange
             var methodInfo = typeof(MethodRewriterTests).GetMethod(nameof(TryCatch_ReturnsFromFinally));
-            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false);
+            var methodRewriter = MethodRewriter.CreateRewriter(methodInfo, false, typeof(MethodRewriterTests));
             var dynamicMethod = methodRewriter.Rewrite() as DynamicMethod;
 
             // Act

@@ -43,7 +43,7 @@ namespace Pose.IL
             _actualType = actualType;
         }
 
-        public static MethodRewriter CreateRewriter(MethodBase method, bool isInterfaceDispatch, Type actualType = null)
+        public static MethodRewriter CreateRewriter(MethodBase method, bool isInterfaceDispatch, Type actualType)
         {
             return new MethodRewriter(
                 method: method,
@@ -378,21 +378,20 @@ namespace Pose.IL
                 // Don't rewrite methods on ConcurrentDictionary
                 if (declaringType.GetGenericTypeDefinition() == typeof(ConcurrentDictionary<,>)) return true;
             }
-            
-            // Don't attempt to rewrite inaccessible constructors in System.Private.CoreLib/mscorlib
-            if (!declaringType.IsPublic) return true;
-            if (!member.IsPublic && !member.IsFamily && !member.IsFamilyOrAssembly) return true;
+
+            if (member.InCoreLibrary())
+            {
+                // Don't attempt to rewrite inaccessible constructors in System.Private.CoreLib/mscorlib
+                if (!declaringType.IsPublic) return true;
+                if (!member.IsPublic && !member.IsFamily && !member.IsFamilyOrAssembly) return true;
+            }
 
             return false;
         }
         
         private void EmitILForConstructor(ILGenerator ilGenerator, Instruction instruction, ConstructorInfo constructorInfo)
         {
-            if (constructorInfo.InCoreLibrary())
-            {
-                // Don't attempt to rewrite inaccessible constructors in System.Private.CoreLib/mscorlib
-                if (ShouldForward(constructorInfo)) goto forward;
-            }
+            if (ShouldForward(constructorInfo)) goto forward;
 
             if (instruction.OpCode == OpCodes.Call)
             {
@@ -425,11 +424,7 @@ namespace Pose.IL
 
         private void EmitILForMethod(ILGenerator ilGenerator, Instruction instruction, MethodInfo methodInfo)
         {
-            if (methodInfo.InCoreLibrary())
-            {
-                // Don't attempt to rewrite inaccessible methods in System.Private.CoreLib/mscorlib
-                if (ShouldForward(methodInfo)) goto forward;
-            }
+            if (ShouldForward(methodInfo)) goto forward;
 
             if (instruction.OpCode == OpCodes.Call)
             {
