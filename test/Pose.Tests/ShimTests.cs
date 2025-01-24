@@ -1,9 +1,11 @@
 using System;
 using System.Globalization;
+using System.Linq.Expressions;
 using System.Threading;
 using FluentAssertions;
 using Pose.Exceptions;
 using Xunit;
+using Expression = System.Linq.Expressions.Expression;
 
 // ReSharper disable RedundantLambdaParameterType
 // ReSharper disable PossibleNullReferenceException
@@ -13,6 +15,8 @@ using Xunit;
 
 namespace Pose.Tests
 {
+    using static TestHelpers;
+    
     public class ShimTests
     {
         public class Methods
@@ -73,8 +77,8 @@ namespace Pose.Tests
                 public void Can_shim_method_of_any_instance()
                 {
                     // Arrange
-                    var action = new Func<Instance, string>((Instance @this) => "String");
-                    var shim = Shim.Replace(() => Is.A<Instance>().GetString()).With(action);
+                    Expression<Func<Instance, string>> action = (Instance @this) => "String";
+                    var shim = Shim.Replace(() => Is.A<Instance>().GetString()).WithExpression(action);
 
                     // Act
                     string dt = default;
@@ -111,7 +115,9 @@ namespace Pose.Tests
                 public void Can_shim_boxed_virtual_method_of_any_instance()
                 {
                     // Arrange
-                    var shim = Shim.Replace(() => Is.A<Base>().GetInt()).With(delegate(Base @base) { return int.MinValue; });
+                    var shim = Shim
+                        .Replace(() => Is.A<Base>().GetInt())
+                        .WithExpression((Base @base) => int.MinValue);
 
                     // Act
                     int dt = default;
@@ -275,7 +281,7 @@ namespace Pose.Tests
                     // Arrange
                     var shim = Shim
                         .Replace(() => Is.A<AbstractBase>().GetStringFromAbstractBase())
-                        .With((AbstractBase @this) => "Hello");
+                        .WithExpression((AbstractBase @this) => "Hello");
 
                     // Act
                     string dt = default;
@@ -298,7 +304,7 @@ namespace Pose.Tests
                     // Arrange
                     var shim = Shim
                         .Replace(() => Is.A<AbstractBase>().GetTFromAbstractBase(Is.A<string>()))
-                        .With((AbstractBase @this, string @string) => "Hello");
+                        .WithExpression((AbstractBase @this, string @string) => "Hello");
 
                     // Act
                     string dt = default;
@@ -314,7 +320,7 @@ namespace Pose.Tests
                     // Assert
                     dt.Should().BeEquivalentTo("Hello", because: "the shim configured the base class");
                 }
-                
+
                 [Fact]
                 public void Can_shim_abstract_method_of_abstract_type()
                 {
@@ -322,15 +328,10 @@ namespace Pose.Tests
                     const string returnValue = "Hello";
                     
                     var wasCalled = false;
-                    var action = new Func<AbstractBase, string>(
-                        (AbstractBase @this) =>
-                        {
-                            wasCalled = true;
-                            return returnValue;
-                        });
+                    Expression<Func<AbstractBase, string>> action = (AbstractBase @this) => SetAndReturn(LocalField(() => wasCalled, true), returnValue);
                     var shim = Shim
                         .Replace(() => Is.A<AbstractBase>().GetAbstractString())
-                        .With(action);
+                        .WithExpression(action);
 
                     // Act
                     string dt = default;
@@ -356,15 +357,10 @@ namespace Pose.Tests
                 {
                     // Arrange
                     var wasCalled = false;
-                    var action = new Func<AbstractBase, string>(
-                        (AbstractBase @this) =>
-                        {
-                            wasCalled = true;
-                            return "Hello";
-                        });
+                    Expression<Func<AbstractBase, string>> action = (AbstractBase @this) => SetAndReturn(LocalField(() => wasCalled, true), "Hello");
                     var shim = Shim
                         .Replace(() => Is.A<AbstractBase>().GetStringFromAbstractBase())
-                        .With(action);
+                        .WithExpression(action);
 
                     // Act
                     string dt = default;
@@ -434,7 +430,7 @@ namespace Pose.Tests
                     // Arrange
                     var shim = Shim
                         .Replace(() => Instance.StaticString)
-                        .With(() => "Hello");
+                        .WithExpression(() => "Hello");
 
                     // Act
                     string value = default;
@@ -457,8 +453,8 @@ namespace Pose.Tests
                 {
                     // Arrange
                     var instance = new Instance();
-                    var action = new Func<Instance, string>((Instance @this) => "Hello");
-                    var shim = Shim.Replace(() => instance.Text).With(action);
+                    Expression<Func<Instance, string>> action = (Instance @this) => "Hello";
+                    var shim = Shim.Replace(() => instance.Text).WithExpression(action);
 
                     // Act
                     string dt = default;
@@ -483,8 +479,8 @@ namespace Pose.Tests
                 public void Can_shim_property_getter_of_any_instance()
                 {
                     // Arrange
-                    var action = new Func<Instance, string>((Instance @this) => "Hello");
-                    var shim = Shim.Replace(() => Is.A<Instance>().Text).With(action);
+                    Expression<Func<Instance, string>> action = (Instance @this) => "Hello";
+                    var shim = Shim.Replace(() => Is.A<Instance>().Text).WithExpression(action);
 
                     // Act
                     string value1 = default;
@@ -561,10 +557,10 @@ namespace Pose.Tests
                 public void Can_shim_property_getter_of_sealed_class()
                 {
                     // Arrange
-                    var action = new Func<SealedClass, string>((SealedClass @this) => "String");
+                    Expression<Func<SealedClass, string>> action = (SealedClass @this) => "String";
                     var shim = Shim
                         .Replace(() => Is.A<SealedClass>().SealedString)
-                        .With(action);
+                        .WithExpression(action);
 
                     // Act
                     string dt = default;
@@ -831,10 +827,10 @@ namespace Pose.Tests
                 public void Can_shim_constructor_of_reference_type()
                 {
                     // Arrange
-                    var action = new Func<Instance>(() => new Instance(){Text = nameof(Instance.Text)});
+                    Expression<Func<Instance>> action = () => new Instance(){Text = nameof(Instance.Text)};
                     var shim = Shim
                         .Replace(() => new Instance())
-                        .With(action);
+                        .WithExpression(action);
 
                     // Act
                     Instance dt = default;
@@ -859,10 +855,10 @@ namespace Pose.Tests
                 public void Can_shim_constructor_of_value_type()
                 {
                     // Arrange
-                    var action = new Func<Instance>(() => new Instance(){Text = nameof(Instance.Text)});
+                    Expression<Func<Instance>> action = () => new Instance(){Text = nameof(Instance.Text)};
                     var shim = Shim
                         .Replace(() => new Instance())
-                        .With(action);
+                        .WithExpression(action);
 
                     // Act
                     Instance dt = default;
@@ -887,10 +883,10 @@ namespace Pose.Tests
                 public void Can_shim_constructor_of_sealed_reference_type()
                 {
                     // Arrange
-                    var action = new Func<Instance>(() => new Instance(){Text = nameof(Instance.Text)});
+                    Expression<Func<Instance>> action = () => new Instance(){Text = nameof(Instance.Text)};
                     var shim = Shim
                         .Replace(() => new Instance())
-                        .With(action);
+                        .WithExpression(action);
 
                     // Act
                     Instance dt = default;
@@ -922,8 +918,8 @@ namespace Pose.Tests
                 var shimTests = new Instance();
                 
                 // Act
-                Action act = () => Shim.Replace(() => shimTests.GetString()).With(() => { }); // Targets Shim.Replace(Expression<Func<T>>) 
-                Action act1 = () => Shim.Replace(() => Console.WriteLine(Is.A<string>())).With(() => { }); // Targets Shim.Replace(Expression<Action>) 
+                Action act = () => Shim.Replace(() => shimTests.GetString()).WithExpression(() => 0); // Targets Shim.Replace(Expression<Func<T>>) 
+                Action act1 = () => Shim.Replace(() => Console.WriteLine(Is.A<string>())).WithExpression(() => Expression.Empty()); // Targets Shim.Replace(Expression<Action>) 
                 
                 // Assert
                 act.Should().Throw<InvalidShimSignatureException>(because: "the signature of the replacement method does not match the original");
@@ -952,15 +948,15 @@ namespace Pose.Tests
                 var shimTests = new Instance();
                 
                 // Act
-                Action act = () => Shim.Replace(() => shimTests.GetString()).With(() => { }); // Targets Shim.Replace(Expression<Func<T>>) 
-                Action act1 = () => Shim.Replace(() => Console.WriteLine(Is.A<string>())).With(() => { }); // Targets Shim.Replace(Expression<Action>) 
-                Action act2 = () => Shim.Replace(() => Is.A<DateTime>().Date).With((DateTime @this) => { return new DateTime(2004, 1, 1); }); // Targets Shim.Replace(Expression<Action>) 
+                Action act = () => Shim.Replace(() => shimTests.GetString()).WithExpression(() => Expression.Empty()); // Targets Shim.Replace(Expression<Func<T>>) 
+                Action act1 = () => Shim.Replace(() => Console.WriteLine(Is.A<string>())).WithExpression(() => Console.WriteLine(default(string))); // Targets Shim.Replace(Expression<Action>) 
+                Action act2 = () => Shim.Replace(() => Is.A<DateTime>().Date).WithExpression((DateTime @this) => new DateTime(2004, 1, 1)); // Targets Shim.Replace(Expression<Action>) 
                 Action act3 = () => Shim.Replace(() => Is.A<DateTime>().Date).With((ref TimeSpan @this) => { return new DateTime(2004, 1, 1); }); // Targets Shim.Replace(Expression<Action>) 
                 
                 // Assert
                 act.Should()
                     .Throw<InvalidShimSignatureException>(because: "the signature of the replacement method does not match the original")
-                    .WithMessage("*Expected System.String* Got System.Void");
+                    .WithMessage("*Expected System.String* Got System.Linq.Expressions.DefaultExpression");
                 act1.Should()
                     .Throw<InvalidShimSignatureException>(because: "the signature of the replacement method does not match the original")
                     .WithMessage("*Expected 1. Got 0*");

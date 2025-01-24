@@ -1,6 +1,8 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System;
+using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Pose.Sandbox
 {
@@ -52,9 +54,92 @@ namespace Pose.Sandbox
 
             public static OverridenOperatorClass operator +(OverridenOperatorClass l, OverridenOperatorClass r) => default(OverridenOperatorClass);
         }
+
+        public class T
+        {
+            public double value { get; set; }
+            public bool WasCalled { get; set; }
+        }
+
+        static Action<double> GetSetterForX(Expression<Func<double>> expression)
+        {
+            var parameter = Expression.Parameter(typeof(double), "value");
+            var body = Expression.Assign(expression.Body, parameter);
+            var lambda = Expression.Lambda<Action<double>>(body, parameter);
+            return lambda.Compile();
+        }
+        
+        static BinaryExpression CreateSetValue<TType>(Expression<Func<TType>> expression, TType assignValue)
+        {
+            LambdaExpression lambdaExpression = expression;
+            var lambdaExpressionBody = lambdaExpression.Body as MemberExpression ?? throw new Exception($"Cannot get member expression from {expression}");
+            var property = lambdaExpressionBody.Member as PropertyInfo ?? throw new Exception($"Cannot get property info from {expression}");
+            var propertyExpression = Expression.Property(lambdaExpressionBody.Expression, property);
+
+            return Expression.Assign(
+                propertyExpression,
+                Expression.Constant(assignValue)
+            );
+        }
+        
+        static void SetValue<TType>(Expression<Func<TType>> expression, TType assignValue)
+        {
+            var lambda = Expression.Lambda(
+                CreateSetValue(expression, assignValue)
+            );
+
+            lambda.Compile().DynamicInvoke();
+        }
+
+        static Expression<Func<TReturn>> SetAndReturn<TType, TReturn>(Expression<Func<TType>> expression, TType assignValue, TReturn returnValue)
+        {
+            var lambda = Expression.Lambda<Func<TReturn>>(
+                Expression.Block(
+                    CreateSetValue(expression, assignValue),
+                    Expression.Constant(returnValue)
+                )
+            );
+
+            return lambda;
+        }
         
         public static void Main(string[] args)
         {
+            int tt = 0;
+            
+            Action<TType> SetX<TType>(Expression<Func<TType>> expression)
+            {
+                var parameter = Expression.Parameter(typeof(TType), "value");
+                var body = Expression.Assign(expression.Body, parameter);
+                var lambda = Expression.Lambda<Action<TType>>(body, parameter);
+                return lambda.Compile();
+            }
+            
+            
+            var foo = new T();
+            // var action = SetX(() => foo.value);
+            // var x1 = SetX(() => tt);
+            // SetValue(() => foo.WasCalled, true);
+            // var invocationExpression = Expression.Lambda<Func<string>>(
+            //     Expression.Block(
+            //         CreateSetValue(() => foo.WasCalled, true),
+            //         Expression.Constant("Hello, World")
+            //     )
+            // );
+            var andReturn = SetAndReturn(() => foo.WasCalled, true, "Hello, World!");
+            var dynamicInvoke = andReturn.Compile().Invoke();
+            var setterForX = GetSetterForX(() => foo.value);
+
+            // var hoisted = Expression.Field(typeof(T).GetProperty("I"), "Value");
+            //
+            // var lambdaExpression = Expression.Lambda(
+            //     Expression.Assign(
+            //         hoisted,
+            //         Expression.Constant(3)
+            //     )
+            // );
+            // var dynamicInvoke = lambdaExpression.Compile().DynamicInvoke();
+            // Console.WriteLine(dynamicInvoke);
 #if NET8_0
             Console.WriteLine(".NET 8");
             

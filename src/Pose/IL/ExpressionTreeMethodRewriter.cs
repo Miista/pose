@@ -84,7 +84,8 @@ namespace Pose.IL
                 else if (instruction.OpCode == OpCodes.Ldc_I4 ||
                     instruction.OpCode == OpCodes.Ldc_I4_S)
                 {
-                    TransformLdC(state, Convert.ToInt32((sbyte)instruction.Operand));
+                    // TransformLdC(state, Convert.ToInt32((sbyte)instruction.Operand));
+                    TransformLdC(state, instruction.Operand);
                 }
                 else if (instruction.OpCode == OpCodes.Ldc_I8 ||
                     instruction.OpCode == OpCodes.Ldc_R4 ||
@@ -1075,12 +1076,26 @@ namespace Pose.IL
 
             args.Reverse();
 
-            state.Stack.Push(
-                Expression.New(
-                    constructorInfo,
-                    args
-                )
-            );
+            var shim = PoseContext.Shims.FirstOrDefault(s => s.Original == constructorInfo);
+
+            if (shim == null)
+            {
+                state.Stack.Push(
+                    Expression.New(
+                        constructorInfo,
+                        args
+                    )
+                );
+            }
+            else
+            {
+                state.Stack.Push(
+                    Expression.Invoke(
+                        shim.ReplacementExpression
+                    )
+                );
+            }
+
         }
 
         private void TransformInitobj(State state, Type type)
@@ -1175,7 +1190,8 @@ namespace Pose.IL
                 {
                     state.Body.Add(
                         Expression.Invoke(
-                            firstOrDefault.ReplacementExpression
+                            firstOrDefault.ReplacementExpression,
+                            !methodInfo.IsStatic ? args.Prepend(instance) : args
                         )
                     );
                 }
@@ -1198,7 +1214,8 @@ namespace Pose.IL
                     {
                         state.Stack.Push(
                             Expression.Invoke(
-                                firstOrDefault.ReplacementExpression
+                                firstOrDefault.ReplacementExpression,
+                                !methodInfo.IsStatic ? args.Prepend(instance) : args
                             )
                         );
                     }

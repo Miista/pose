@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -79,6 +80,48 @@ namespace Pose.Helpers
             return $"The expression for node type {expression.NodeType} could not be mapped to a method";
         }
 
+        private static ICollection<ParameterExpression> GetParameters(Expression expression)
+        {
+            return typeof(Expression<>).MakeGenericType(expression.Type).GetProperty(nameof(Expression<Delegate>.Parameters))?.GetValue(expression) as
+                ICollection<ParameterExpression> ?? throw new Exception($"Expression {expression} does not have any parameters");
+        }
+            
+        public static void ValidateReplacementExpressionSignature(MethodBase originalMethod, Expression originalExpression, Expression replacementExpression, Type type, bool setter)
+        {
+            var original = originalExpression as LambdaExpression ?? throw new Exception($"Cannot cast expression to {nameof(LambdaExpression)}");
+            var replacement = replacementExpression as LambdaExpression ?? throw new Exception($"Cannot cast expression to {nameof(LambdaExpression)}");
+            
+            var isStatic = originalMethod.IsStatic;
+            var isConstructor = originalMethod.IsConstructor;
+            var isStaticOrConstructor = isStatic || isConstructor;
+            
+            var validReturnType = original.ReturnType;
+            var shimReturnType = replacement.ReturnType;
+            
+            var validParameterTypes = (original.Body as MethodCallExpression).Arguments
+                .Select(p => p.Type)
+                .ToArray();
+            var shimParameterTypes = GetParameters(replacementExpression)
+                .Select(p => p.Type)
+                .Skip(isStaticOrConstructor ? 0 : 1)
+                .ToArray();
+            
+            if (validReturnType != shimReturnType)
+                throw new InvalidShimSignatureException($"Mismatched return types. Expected {validReturnType}. Got {shimReturnType}");
+            
+            if (validParameterTypes.Length != shimParameterTypes.Length)
+                throw new InvalidShimSignatureException($"Parameters count do not match. Expected {validParameterTypes.Length}. Got {shimParameterTypes.Length}");
+
+            for (var i = 0; i < validParameterTypes.Length; i++)
+            {
+                var expectedType = validParameterTypes.ElementAt(i);
+                var actualType = shimParameterTypes.ElementAt(i);
+                
+                if (expectedType != actualType)
+                    throw new InvalidShimSignatureException($"Parameter types at {i} do not match. Expected '{expectedType}' but found {actualType}'");
+            }
+        }
+        
         public static void ValidateReplacementMethodSignature(MethodBase original, MethodInfo replacement, Type type, bool setter)
         {
             if (original == null) throw new ArgumentNullException(nameof(original));

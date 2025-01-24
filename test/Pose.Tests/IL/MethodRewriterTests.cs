@@ -286,15 +286,15 @@ namespace Pose.Tests
             [Fact]
             public void Can_handle_InlineI()
             {
-                var value = default(int);
+                var value = default(sbyte);
                 Action act = () => PoseContext.Isolate(
                     () =>
                     {
-                        value = int.MaxValue;
+                        value = sbyte.MaxValue;
                     }, DummyShim);
 
                 act.Should().NotThrow();
-                value.Should().Be(int.MaxValue, because: "that is the value assigned");
+                value.Should().Be(sbyte.MaxValue, because: "that is the value assigned");
             }
             
             [Fact]

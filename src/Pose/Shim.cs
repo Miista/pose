@@ -9,6 +9,8 @@ namespace Pose
 {
     public partial class Shim
     {
+        private readonly Expression _originalExpression;
+        
         private MethodBase _original;
         private Delegate _replacement;
         private object _instance;
@@ -55,8 +57,9 @@ namespace Pose
         
         internal Expression ReplacementExpression { get; private set; }
         
-        private Shim(MethodBase original, object instanceOrType, Expression expression)
+        private Shim(Expression originalExpression, MethodBase original, object instanceOrType, Expression expression)
         {
+            _originalExpression = originalExpression;
             _original = original;
             if (instanceOrType is Type type)
                 _type = type;
@@ -76,7 +79,7 @@ namespace Pose
         private static Shim ReplaceImpl<T>(Expression<T> expression, bool setter)
         {
             var methodBase = ShimHelper.GetMethodFromExpression(expression.Body, setter, out var instance);
-            return new Shim(methodBase, instance, expression) { _setter = setter };
+            return new Shim(expression, methodBase, instance, expression) { _setter = setter };
         }
 
         private Shim WithImpl(Delegate replacement)
@@ -90,7 +93,7 @@ namespace Pose
         {
             ReplacementExpression = replacement;
             //_replacement = replacement;
-            //ShimHelper.ValidateReplacementMethodSignature(this._original, this._replacement.Method, _instance?.GetType() ?? _type, _setter);
+            ShimHelper.ValidateReplacementExpressionSignature(this._original, this._originalExpression, ReplacementExpression, _instance?.GetType() ?? _type, _setter);
             return this;
         }
     }

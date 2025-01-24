@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
 using Pose.Delegates;
 
 namespace Pose
@@ -11,6 +12,9 @@ namespace Pose
 
         [ExcludeFromCodeCoverage(Justification = "Forwards to WithImpl")]
         public Shim With(Action replacement) => WithImpl(replacement);
+        
+        [ExcludeFromCodeCoverage(Justification = "Forwards to WithImpl")]
+        public Shim WithExpression(Expression replacement) => WithImpl(replacement);
 
         [ExcludeFromCodeCoverage(Justification = "Forwards to WithImpl")]
         public Shim With<T>(Action<T> replacement) => WithImpl(replacement);
@@ -88,16 +92,25 @@ namespace Pose
 
         [ExcludeFromCodeCoverage(Justification = "Forwards to WithImpl")]
         public Shim With<TResult>(Func<TResult> replacement) => WithImpl(replacement);
+        
+        [ExcludeFromCodeCoverage(Justification = "Forwards to WithImpl")]
+        public Shim WithExpression<TResult>(Expression<Func<TResult>> replacement) => WithImpl(replacement);
 
         [ExcludeFromCodeCoverage(Justification = "Forwards to WithImpl")]
         public Shim With<T1, TResult>(Func<T1, TResult> replacement) => WithImpl(replacement);
 
+        [ExcludeFromCodeCoverage(Justification = "Forwards to WithImpl")]
+        public Shim WithExpression<T1, TResult>(Expression<Func<T1, TResult>> replacement) => WithImpl(replacement);
+        
         [ExcludeFromCodeCoverage(Justification = "Forwards to WithImpl")]
         public Shim With<T1, TResult>(FuncRef<T1, TResult> replacement) => WithImpl(replacement);
 
         [ExcludeFromCodeCoverage(Justification = "Forwards to WithImpl")]
         public Shim With<T1, T2, TResult>(Func<T1, T2, TResult> replacement) => WithImpl(replacement);
 
+        [ExcludeFromCodeCoverage(Justification = "Forwards to WithImpl")]
+        public Shim WithExpression<T1, T2, TResult>(Expression<Func<T1, T2, TResult>> replacement) => WithImpl(replacement);
+        
         [ExcludeFromCodeCoverage(Justification = "Forwards to WithImpl")]
         public Shim With<T1, T2, TResult>(FuncRef<T1, T2, TResult> replacement) => WithImpl(replacement);
 

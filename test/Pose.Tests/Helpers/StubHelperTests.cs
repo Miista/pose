@@ -32,7 +32,11 @@ namespace Pose.Tests
             var shim = Shim.Replace(() => Console.Clear()).With(action);
             
             // Act
-            PoseContext.Isolate(() => { }, shim);
+            PoseContext.Isolate(
+                () =>
+                {
+                    Console.WriteLine("Hello");
+                }, shim);
 
             // Assert
             var shimDelegateTarget = StubHelper.GetShimDelegateTarget(0);
@@ -48,7 +52,11 @@ namespace Pose.Tests
             var shim = Shim.Replace(() => Console.Clear()).With(action);
             
             // Act
-            PoseContext.Isolate(() => { }, shim);
+            PoseContext.Isolate(
+                () =>
+                {
+                    Console.WriteLine("Hello");
+                }, shim);
 
             // Assert
             var shimReplacementMethod = StubHelper.GetShimReplacementMethod(0);
@@ -69,7 +77,11 @@ namespace Pose.Tests
             var shim2 = Shim.Replace(() => stubHelperTests.Can_get_index_of_matching_shim()).With(instanceAction);
             
             // Act
-            PoseContext.Isolate(() => { }, shim, shim1, shim2);
+            PoseContext.Isolate(
+                () =>
+                {
+                    Console.WriteLine("Hello");
+                }, shim, shim1, shim2);
 
             // Assert
             var consoleMethodInfo = typeof(Console).GetMethod(nameof(Console.Clear));

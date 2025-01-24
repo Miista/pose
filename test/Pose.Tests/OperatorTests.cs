@@ -58,7 +58,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = new OperatorsClass { Value = "Hello, World" };
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>() + Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l, OperatorsClass r) => shimmedValue);
 
                     var left = new OperatorsClass();
                     var right = new OperatorsClass();
@@ -79,7 +79,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = TimeSpan.FromSeconds(2);
                     var shim = Shim.Replace(() => Is.A<TimeSpan>() + Is.A<TimeSpan>())
-                        .With(delegate(TimeSpan l, TimeSpan r) { return shimmedValue; });
+                        .WithExpression((TimeSpan l, TimeSpan r) => shimmedValue);
 
                     var now = TimeSpan.Zero;
                     var zeroSeconds = TimeSpan.Zero;
@@ -99,7 +99,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = TimeSpan.FromDays(2);
                     var shim = Shim.Replace(() => Is.A<TimeSpan>() - Is.A<TimeSpan>())
-                        .With(delegate(TimeSpan dt, TimeSpan ts) { return shimmedValue; });
+                        .WithExpression((TimeSpan dt, TimeSpan ts) => shimmedValue);
 
                     var now = TimeSpan.Zero;
                     var zeroSeconds = TimeSpan.Zero;
@@ -119,7 +119,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = new OperatorsClass { Value = "Hello, World" };
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>() - Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l, OperatorsClass r) => shimmedValue);
 
                     var left = new OperatorsClass();
                     var right = new OperatorsClass();
@@ -140,7 +140,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = new OperatorsClass { Value = "Hello, World" };
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>() * Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l, OperatorsClass r) => shimmedValue);
 
                     var left = new OperatorsClass();
                     var right = new OperatorsClass();
@@ -161,7 +161,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = new OperatorsClass { Value = "Hello, World" };
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>() / Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l, OperatorsClass r) => shimmedValue);
 
                     var left = new OperatorsClass();
                     var right = new OperatorsClass();
@@ -182,7 +182,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = new OperatorsClass { Value = "Hello, World" };
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>() % Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l, OperatorsClass r) => shimmedValue);
 
                     var left = new OperatorsClass();
                     var right = new OperatorsClass();
@@ -203,7 +203,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = new OperatorsClass { Value = "Hello, World" };
                     var shim = Shim.Replace(() => ~Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l) => shimmedValue);
 
                     var sut = new OperatorsClass();
                     var result = default(OperatorsClass);
@@ -223,7 +223,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = new OperatorsClass { Value = "Hello, World" };
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l) => shimmedValue);
 
                     var sut = new OperatorsClass();
                     var result = default(OperatorsClass);
@@ -242,7 +242,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = new OperatorsClass { Value = "Hello, World" };
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l) => shimmedValue);
 
                     var sut = new OperatorsClass();
                     var result = default(OperatorsClass);
@@ -261,7 +261,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = new OperatorsClass { Value = "Hello, World" };
                     var shim = Shim.Replace(() => +Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l) => shimmedValue);
 
                     var sut = new OperatorsClass();
                     var result = default(OperatorsClass);
@@ -281,7 +281,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = new OperatorsClass { Value = "Hello, World" };
                     var shim = Shim.Replace(() => -Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l) => shimmedValue);
 
                     var sut = new OperatorsClass();
                     var result = default(OperatorsClass);
@@ -304,7 +304,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = new OperatorsClass { Value = "Hello, World" };
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>() << Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l, OperatorsClass r) => shimmedValue);
 
                     var left = new OperatorsClass();
                     var right = new OperatorsClass();
@@ -325,7 +325,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = new OperatorsClass { Value = "Hello, World" };
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>() >> Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l, OperatorsClass r) => shimmedValue);
 
                     var left = new OperatorsClass();
                     var right = new OperatorsClass();
@@ -349,7 +349,7 @@ namespace Pose.Tests
                     // Arrange
                     bool? shimmedValue = false;
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>() == Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l, OperatorsClass r) => shimmedValue);
 
                     // Act
                     var result = default(bool?);
@@ -378,7 +378,7 @@ namespace Pose.Tests
                     // Arrange
                     bool? shimmedValue = false;
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>() != Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l, OperatorsClass r) => shimmedValue);
 
                     // Act
                     var result = default(bool?);
@@ -407,7 +407,7 @@ namespace Pose.Tests
                     // Arrange
                     bool? shimmedValue = false;
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>() < Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l, OperatorsClass r) => shimmedValue);
 
                     // Act
                     var result = default(bool?);
@@ -436,7 +436,7 @@ namespace Pose.Tests
                     // Arrange
                     bool? shimmedValue = false;
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>() > Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l, OperatorsClass r) => shimmedValue);
 
                     // Act
                     var result = default(bool?);
@@ -465,7 +465,7 @@ namespace Pose.Tests
                     // Arrange
                     bool? shimmedValue = false;
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>() <= Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l, OperatorsClass r) => shimmedValue);
 
                     // Act
                     var result = default(bool?);
@@ -494,7 +494,7 @@ namespace Pose.Tests
                     // Arrange
                     bool? shimmedValue = false;
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>() >= Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l, OperatorsClass r) => shimmedValue);
 
                     // Act
                     var result = default(bool?);
@@ -526,7 +526,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = int.MaxValue;
                     var shim = Shim.Replace(() => (int) Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l) => shimmedValue);
 
                     var sut = new OperatorsClass();
                     var result = int.MinValue;
@@ -546,7 +546,7 @@ namespace Pose.Tests
                     var shimmedValue = double.MaxValue;
                     // While this is in fact *NOT* the implicit operator, it does replace the correct method.
                     var shim = Shim.Replace(() => (double) Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l) => shimmedValue);
 
                     var sut = new OperatorsClass();
                     var result = 42.0;
@@ -568,7 +568,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = new OperatorsClass { Value = "Hello, World" };
                     var shim = Shim.Replace(() => !Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l) => shimmedValue);
 
                     var sut = new OperatorsClass();
                     var result = default(OperatorsClass);
@@ -588,7 +588,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = new OperatorsClass { Value = "Hello, World" };
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>() & Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l, OperatorsClass r) => shimmedValue);
 
                     var left = new OperatorsClass();
                     var right = new OperatorsClass();
@@ -609,7 +609,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = new OperatorsClass { Value = "Hello, World" };
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>() ^ Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l, OperatorsClass r) => shimmedValue);
 
                     var left = new OperatorsClass();
                     var right = new OperatorsClass();
@@ -630,7 +630,7 @@ namespace Pose.Tests
                     // Arrange
                     var shimmedValue = new OperatorsClass { Value = "Hello, World" };
                     var shim = Shim.Replace(() => Is.A<OperatorsClass>() | Is.A<OperatorsClass>())
-                        .With(delegate(OperatorsClass l, OperatorsClass r) { return shimmedValue; });
+                        .WithExpression((OperatorsClass l, OperatorsClass r) => shimmedValue);
 
                     var left = new OperatorsClass();
                     var right = new OperatorsClass();
