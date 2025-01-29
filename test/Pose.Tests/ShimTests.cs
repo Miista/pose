@@ -159,7 +159,9 @@ namespace Pose.Tests
                 public void Can_shim_constrained_virtual_method_of_any_instance()
                 {
                     // Arrange
-                    var shim = Shim.Replace(() => Is.A<Instance>().GetDouble()).With(delegate(Instance @base) { return double.MinValue; });
+                    var shim = Shim
+                        .Replace(() => Is.A<Instance>().GetDouble())
+                        .WithExpression((Instance @base) => double.MinValue);
 
                     // Act
                     double dt = default;
@@ -239,7 +241,7 @@ namespace Pose.Tests
                     const string configuredValue = "String";
                     var shim = Shim
                         .Replace(() => Is.A<InstanceValue>().GetString())
-                        .With((ref InstanceValue @this) => configuredValue);
+                        .WithExpression((InstanceValue @this) => configuredValue);
 
                     // Act
                     string value = default;
@@ -529,7 +531,7 @@ namespace Pose.Tests
                     // Arrange
                     var shim = Shim
                         .Replace(() => Is.A<InstanceValue>().Text)
-                        .With((ref InstanceValue @this) => "Hello");
+                        .WithExpression((InstanceValue @this) => "Hello");
 
                     // Act
                     string value1 = default;
@@ -989,8 +991,7 @@ namespace Pose.Tests
                 // Act
                 Action act = () => Shim.Replace(() => shimTests.GetString()).WithExpression(() => Expression.Empty()); // Targets Shim.Replace(Expression<Func<T>>) 
                 Action act1 = () => Shim.Replace(() => Console.WriteLine(Is.A<string>())).WithExpression(() => Console.WriteLine(default(string))); // Targets Shim.Replace(Expression<Action>) 
-                Action act2 = () => Shim.Replace(() => Is.A<DateTime>().Date).WithExpression((DateTime @this) => new DateTime(2004, 1, 1)); // Targets Shim.Replace(Expression<Action>) 
-                Action act3 = () => Shim.Replace(() => Is.A<DateTime>().Date).With((ref TimeSpan @this) => { return new DateTime(2004, 1, 1); }); // Targets Shim.Replace(Expression<Action>) 
+                Action act2 = () => Shim.Replace(() => Is.A<DateTime>().Date).With((ref TimeSpan @this) => { return new DateTime(2004, 1, 1); }); // Targets Shim.Replace(Expression<Action>) 
                 
                 // Assert
                 act.Should()
@@ -1000,9 +1001,6 @@ namespace Pose.Tests
                     .Throw<InvalidShimSignatureException>(because: "the signature of the replacement method does not match the original")
                     .WithMessage("*Expected 1. Got 0*");
                 act2.Should()
-                    .Throw<InvalidShimSignatureException>(because: "value types must be passed by ref")
-                    .WithMessage("*ValueType instances must be passed by ref*");
-                act3.Should()
                     .Throw<InvalidShimSignatureException>(because: "the signature of the replacement method does not match the original")
                     .WithMessage("*Expected System.DateTime* Got System.TimeSpan*");
             }
