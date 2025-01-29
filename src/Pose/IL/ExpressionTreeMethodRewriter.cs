@@ -1068,14 +1068,42 @@ namespace Pose.IL
             );
         }
 
+        // TODO: Replace usages with this method
+        private static IEnumerable<Expression> ResolveArguments(State state, MethodBase method)
+        {
+            var constructorParameters = method.GetParameters().Reverse().ToArray();
+            var args = new Expression[constructorParameters.Length];
+
+            for (var i = 0; i < constructorParameters.Length; i++)
+            {
+                var argument = state.Stack.Pop();
+                
+                if (argument.Type != constructorParameters[i].ParameterType)
+                {
+                    argument = Expression.Convert(argument, constructorParameters[i].ParameterType);
+                }
+                
+                args[i] = argument;
+            }
+
+            return args.Reverse();
+        }
+        
         private void TransformNewobj(State state, ConstructorInfo constructorInfo)
         {
             List<Expression> args = new List<Expression>();
-            for (int i = 0; i < constructorInfo.GetParameters().Length; i++)
+            var constructorParameters = constructorInfo.GetParameters().Reverse().ToArray();
+            
+            for (var i = 0; i < constructorParameters.Length; i++)
             {
-                args.Add(
-                    state.Stack.Pop()
-                );
+                var argument = state.Stack.Pop();
+                
+                if (argument.Type != constructorParameters[i].ParameterType)
+                {
+                    argument = Expression.Convert(argument, constructorParameters[i].ParameterType);
+                }
+                
+                args.Add(argument);
             }
 
             args.Reverse();
@@ -1095,7 +1123,8 @@ namespace Pose.IL
             {
                 state.Stack.Push(
                     Expression.Invoke(
-                        shim.ReplacementExpression
+                        shim.ReplacementExpression,
+                        args
                     )
                 );
             }
@@ -1158,14 +1187,21 @@ namespace Pose.IL
             List<Expression> args = new List<Expression>();
             if (memberInfo is ConstructorInfo constructorInfo)
             {
-                for (int i = 0; i < constructorInfo.GetParameters().Length; i++)
+                var constructorParameters = constructorInfo.GetParameters().Reverse().ToArray();
+                for (int i = 0; i < constructorParameters.Length; i++)
                 {
-                    args.Add(
-                        state.Stack.Pop()
-                    );
+                    var argument = state.Stack.Pop();
+                
+                    if (argument.Type != constructorParameters[i].ParameterType)
+                    {
+                        argument = Expression.Convert(argument, constructorParameters[i].ParameterType);
+                    }
+                
+                    args.Add(argument);
                 }
 
                 args.Reverse();
+                
                 state.Body.Add(
                     Expression.New(constructorInfo, args)
                 );
@@ -1174,14 +1210,21 @@ namespace Pose.IL
             }
 
             MethodInfo methodInfo = memberInfo as MethodInfo;
-            for (int i = 0; i < methodInfo.GetParameters().Length; i++)
+            var methodParameters = methodInfo.GetParameters().Reverse().ToArray();
+            for (int i = 0; i < methodParameters.Length; i++)
             {
-                args.Add(
-                    state.Stack.Pop()
-                );
+                var argument = state.Stack.Pop();
+                
+                if (argument.Type != methodParameters[i].ParameterType)
+                {
+                    argument = Expression.Convert(argument, methodParameters[i].ParameterType);
+                }
+                
+                args.Add(argument);
             }
 
             args.Reverse();
+            
             Expression instance = (methodInfo.IsStatic) ? null : state.Stack.Pop();
 
             var matchingShim = PoseContext.Shims.FirstOrDefault(s => s.Original == memberInfo);
@@ -1223,25 +1266,6 @@ namespace Pose.IL
                     if (matchingShim.IsInstanceSpecific)
                     {
                         var matchVar = Expression.Variable(typeof(bool), "match");
-                        var parameterExpression = Expression.Parameter(_instance.GetType(), "instance");
-                        // var lambdaExpression =
-                        //     Expression.Lambda(
-                        //         Expression.Block(
-                        //             new[] { matchVar },
-                        //             Expression.IfThenElse(
-                        //
-                        //                 // Check whether the given instance matches the shim's expected instance 
-                        //                 Expression.ReferenceEqual(
-                        //                     Expression.Constant(matchingShim.Instance),
-                        //                     instance
-                        //                 ),
-                        //                 Expression.Assign(matchVar, Expression.Constant(true)),
-                        //                 Expression.Assign(matchVar, Expression.Constant(false))
-                        //             ),
-                        //             matchVar
-                        //         ),
-                        //         parameterExpression
-                        //     );
                         var lambdaExpression =
                             Expression.Lambda(
                                 Expression.Block(

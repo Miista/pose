@@ -828,7 +828,7 @@ namespace Pose.Tests
                 {
                     public string Text { get; set; }
                 }
-
+                
                 [Fact]
                 public void Can_shim_constructor_of_reference_type()
                 {
@@ -847,6 +847,39 @@ namespace Pose.Tests
             
                     // Assert
                     dt.Text.Should().BeEquivalentTo(nameof(Instance.Text), because: "that is what the shim is configured to return");
+                }
+                
+                private class InstanceWithParameters
+                {
+                    public string Text { get; set; }
+                    public int Number { get; set; }
+
+                    public InstanceWithParameters(string text, int number)
+                    {
+                        Text = text;
+                        Number = number;
+                    }
+                }
+                
+                [Fact]
+                public void Can_shim_constructor_of_reference_type_with_parameters()
+                {
+                    // Arrange
+                    Expression<Func<string, int, InstanceWithParameters>> action = (string s, int i) => new InstanceWithParameters(nameof(Instance.Text), int.MaxValue);
+                    var shim = Shim
+                        .Replace(() => new InstanceWithParameters(Is.A<string>(), Is.A<int>()))
+                        .WithExpression(action);
+
+                    // Act
+                    InstanceWithParameters dt = default;
+                    PoseContext.Isolate(
+                        () => { dt = new InstanceWithParameters(default(string), default(int)); },
+                        shim
+                    );
+            
+                    // Assert
+                    dt.Text.Should().BeEquivalentTo(nameof(Instance.Text), because: "that is what the shim is configured to return");
+                    dt.Number.Should().Be(int.MaxValue, because: "that is what the shim is configured to return");
                 }
             }
             
