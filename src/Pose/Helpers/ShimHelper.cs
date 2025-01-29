@@ -97,6 +97,7 @@ namespace Pose.Helpers
             var isStaticOrConstructor = isStatic || isConstructor;
             
             var validReturnType = original.ReturnType;
+            validReturnType = setter ? typeof(void) : validReturnType;
             var shimReturnType = replacement.ReturnType;
 
             var validParameterTypes = GetMethodFromExpression(original.Body, setter, out _).GetParameters().Select(p => p.ParameterType).ToArray();

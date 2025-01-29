@@ -16,6 +16,7 @@ using Expression = System.Linq.Expressions.Expression;
 namespace Pose.Tests
 {
     using static TestHelpers;
+    using static Expression;
     
     public class ShimTests
     {
@@ -36,7 +37,7 @@ namespace Pose.Tests
                     
                     var shim = Shim
                         .Replace(() => Instance.StaticMethod())
-                        .With(() => "String");
+                        .WithExpression(() => "String");
 
                     // Act
                     string returnedValue = default;
@@ -182,7 +183,7 @@ namespace Pose.Tests
                     var instance = new Instance();
                     var shim = Shim
                         .Replace(() => instance.GetString())
-                        .With((Instance _) => configuredValue);
+                        .WithExpression((Instance _) => configuredValue);
 
                     // Act
                     string value = default;
@@ -199,10 +200,12 @@ namespace Pose.Tests
                 public void Shims_only_the_method_of_the_specified_instance()
                 {
                     // Arrange
+                    const string configuredValue = "String";
+                    
                     var shimmedInstance = new Instance();
                     var shim = Shim
                         .Replace(() => shimmedInstance.GetString())
-                        .With((Instance @this) => "String");
+                        .WithExpression((Instance @this) => configuredValue);
 
                     // Act
                     string responseFromShimmedInstance = default;
@@ -216,8 +219,8 @@ namespace Pose.Tests
                         }, shim);
             
                     // Assert
-                    responseFromShimmedInstance.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
-                    responseFromNonShimmedInstance.Should().NotBeEquivalentTo("String", because: "the shim is configured for a specific instance");
+                    responseFromShimmedInstance.Should().BeEquivalentTo(configuredValue, because: "that is what the shim is configured to return");
+                    responseFromNonShimmedInstance.Should().NotBeEquivalentTo(configuredValue, because: "the shim is configured for a specific instance");
                     responseFromNonShimmedInstance.Should().BeEquivalentTo("!", because: "that is what the instance returns by default");
                 }
             }
@@ -392,8 +395,8 @@ namespace Pose.Tests
                 public void Can_shim_method_of_sealed_class()
                 {
                     // Arrange
-                    var action = new Func<SealedClass, string>((SealedClass @this) => "String");
-                    var shim = Shim.Replace(() => Is.A<SealedClass>().GetSealedString()).With(action);
+                    Expression<Func<SealedClass, string>> action = (SealedClass @this) => "String";
+                    var shim = Shim.Replace(() => Is.A<SealedClass>().GetSealedString()).WithExpression(action);
 
                     // Act
                     string dt = default;
@@ -598,7 +601,7 @@ namespace Pose.Tests
                     var wasCalled = false;
                     var shim = Shim
                         .Replace(() => Instance.StaticString, true)
-                        .With(new Action<string>(_ => { wasCalled = true; }));
+                        .WithExpression((string s) => Set(LocalField(() => wasCalled, true)));
 
                     // Pre-Act Assert
                     wasCalled.Should().BeFalse(because: "the shim has not been called yet");
@@ -617,7 +620,7 @@ namespace Pose.Tests
                 {
                     public string Text { get; set; }
                 }
-                
+
                 [Fact]
                 public void Can_shim_property_setter_of_any_instance()
                 {
@@ -626,7 +629,7 @@ namespace Pose.Tests
 
                     var shim = Shim
                         .Replace(() => Is.A<Instance>().Text, true)
-                        .With((Instance @this, string prop) => { invocationCount++; });
+                        .WithExpression((Instance @this, string prop) => Set(LocalField(() => invocationCount, Increment)));
 
                     // Pre-act assert
                     invocationCount.Should().Be(0, because: "the shim has not been called yet");
@@ -649,10 +652,12 @@ namespace Pose.Tests
                     // Arrange
                     var instance = new Instance();
                     var wasCalled = false;
-                    var action = new Action<Instance, string>((Instance @this, string prop) => { wasCalled = true; });
+                    Expression<Action<Instance, string>> action = (Instance @this, string prop) => Set(LocalField(() => wasCalled, true));
             
                     // Act
-                    var shim = Shim.Replace(() => Is.A<Instance>().Text, true).With(action);
+                    var shim = Shim
+                        .Replace(() => Is.A<Instance>().Text, true)
+                        .WithExpression(action);
 
                     // Assert
                     wasCalled.Should().BeFalse(because: "the shim has not been called yet");
@@ -719,15 +724,16 @@ namespace Pose.Tests
                 {
                     // Arrange
                     var wasCalled = false;
-                    var action = new Action<SealedClass, string>((SealedClass @this, string value) =>
-                        {
-                            wasCalled = true;
-                            @this.SealedString = "Something";
-                        }
-                    );
+                    Expression<Action<SealedClass, string>> action = (SealedClass @this, string value) =>
+                        Set(
+                            Block(
+                                LocalField(() => wasCalled, true),
+                                LocalField(() => @this.SealedString, e => Constant("Something"))
+                            )
+                        );
                     var shim = Shim
                         .Replace(() => Is.A<SealedClass>().SealedString, setter: true)
-                        .With(action);
+                        .WithExpression(action);
 
                     // Act
                     wasCalled.Should().BeFalse(because: "no calls have been made yet");

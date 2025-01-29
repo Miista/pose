@@ -132,8 +132,17 @@ namespace Pose.Sandbox
                     Expression.Constant("The condition is false.")
                 )
             );
+            var ifThenElse2 = Expression.Condition(
+                test:
+                Expression.ReferenceEqual(
+                    memberExpression,
+                    Expression.Constant("s")
+                ),
+                Expression.Constant(true),
+                Expression.Constant(false)
+            );
 
-            var expression1 = Expression.Lambda<Action>(ifThenElse);
+            var expression1 = Expression.Lambda<Func<bool>>(ifThenElse2);
             var compile = expression1.Compile();
             var invoke = compile.DynamicInvoke();
 

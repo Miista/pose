@@ -4,6 +4,7 @@
     <DebugType>portable</DebugType>
     <AssemblyName>Pose</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>9</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DefineConstants></DefineConstants>

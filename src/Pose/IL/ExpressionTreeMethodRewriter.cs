@@ -1184,202 +1184,114 @@ namespace Pose.IL
             args.Reverse();
             Expression instance = (methodInfo.IsStatic) ? null : state.Stack.Pop();
 
-            var firstOrDefault = PoseContext.Shims.FirstOrDefault(s => s.Original == memberInfo);
+            var matchingShim = PoseContext.Shims.FirstOrDefault(s => s.Original == memberInfo);
 
-            var returnTarget = Expression.Label();
-            
+            // The method is void, thus we should not add anything to the stack.
             if (methodInfo.ReturnType == typeof(void))
             {
-                if (firstOrDefault != null)
+                if (matchingShim == null)
                 {
+                    // Call the regular method
                     state.Body.Add(
-                        Expression.Invoke(
-                            firstOrDefault.ReplacementExpression,
-                            !methodInfo.IsStatic ? args.Prepend(instance) : args
-                        )
+                        Expression.Call(instance, methodInfo, args)
                     );
                 }
                 else
                 {
                     state.Body.Add(
-                        Expression.Call(
-                            instance,
-                            methodInfo,
-                            args
+                        Expression.Invoke(
+                            matchingShim.ReplacementExpression,
+                            !methodInfo.IsStatic ? args.Prepend(instance) : args
                         )
                     );
                 }
             }
             else
             {
-                if (firstOrDefault != null)
+                if (matchingShim == null)
                 {
-                    if (firstOrDefault.ReplacementExpression.NodeType == ExpressionType.Lambda)
-                    {
-                        if (firstOrDefault.Instance == null)
-                        {
-                            // The shim is not instance specific
-                            state.Stack.Push(
-                                Expression.Invoke(
-                                    firstOrDefault.ReplacementExpression,
-                                    !methodInfo.IsStatic ? args.Prepend(instance) : args
-                                )
-                            );
-                            return;
-                        }
-                        
-                        // var referenceEqual = Expression.ReferenceEqual(
-                            // instance,
-                            // instance
-                        // );
-                        // Expression<Func<object, object, bool>> refz = (object o1, object o2) => o1 == o2;
-
-                        var match = Expression.Variable(typeof(bool), "match");
-                        var equal = Expression.ReferenceEqual(
-                            Expression.Constant(firstOrDefault.Instance),
-                            instance
-                        );
-                        var l = Expression.Lambda(
-                            Expression.Block(
-                                new[] { match },
-                                Expression.IfThenElse(
-                                    equal,
-                                    Expression.Assign(match, Expression.Constant(true)),
-                                    Expression.Assign(match, Expression.Constant(false))
-                                ),
-                                match
-                            ),
-                            state.Arguments
-                        );
-                        var invoke = l.Compile().DynamicInvoke(_instance);
-
-                        if (invoke is bool b)
-                        {
-                            if (b)
-                            {
-                                state.Stack.Push(
-                                    Expression.Invoke(
-                                        firstOrDefault.ReplacementExpression,
-                                        !methodInfo.IsStatic ? args.Prepend(instance) : args
-                                    )
-                                );
-                            }
-                            else
-                            {
-                                state.Stack.Push(
-                                    Expression.Call(
-                                        instance,
-                                        methodInfo,
-                                        args
-                                    )
-                                );
-
-                            }
-                        }
-
-                        return;
-                        
-                        var isTrue = Expression.Call(
-                            null,
-                            typeof(Console).GetMethod("WriteLine", new Type[] { typeof(String) }),
-                            Expression.Constant("The condition is true.")
-                        );
-                        var invokeTrue = Expression.Invoke(
-                            firstOrDefault.ReplacementExpression,
-                            !methodInfo.IsStatic ? args.Prepend(instance) : args
-                        );
-                        
-                        var isFalse = Expression.Call(
-                            null,
-                            typeof(Console).GetMethod("WriteLine", new Type[] { typeof(String) }),
-                            Expression.Constant("The condition is false.")
-                        );
-                        var invokeFalse = Expression.Call(
-                            instance,
-                            methodInfo,
-                            args
-                        );
-                        var result = Expression.Variable(methodInfo.ReturnType, "result");
-                        var lambdaExpression = Expression.Lambda(
-                            Expression.Block(
-                                new[] { result },
-                                Expression.IfThenElse(
-                                    equal,
-                                    Expression.Block(
-                                        isTrue,
-                                        Expression.Assign(result, invokeTrue)
-                                    ),
-                                    Expression.Block(
-                                        isFalse,
-                                        Expression.Assign(result, invokeFalse)
-                                    )
-                                ),
-                                result
-                            ),
-                            state.Arguments
-                        );
-                        var dynamicInvoke = lambdaExpression.Compile().DynamicInvoke(_instance);
-                        
-                        state.Stack.Push(Expression.Constant(dynamicInvoke, methodInfo.ReturnType));
-
-                        // var blockExpression = Expression.Block(
-                        //     Expression.IfThenElse(
-                        //         refz.Body,
-                        //         // Expression.Invoke(
-                        //         //     firstOrDefault.ReplacementExpression,
-                        //         //     !methodInfo.IsStatic ? args.Prepend(instance) : args
-                        //         // ),
-                        //         isTrue,
-                        //         // Expression.Call(
-                        //         //     instance,
-                        //         //     methodInfo,
-                        //         //     args
-                        //         // )
-                        //         isFalse
-                        //     )
-                        //     // Expression.Invoke(
-                        //     //     firstOrDefault.ReplacementExpression,
-                        //     //     !methodInfo.IsStatic ? args.Prepend(instance) : args
-                        //     // )
-                        // );
-                        //
-                        // var parameterExpression = Expression.Parameter(typeof(object), "s");
-                        // var binaryExpression = Expression.ReferenceEqual(
-                        //     instance,
-                        //     parameterExpression
-                        // );
-                        // var lambda = Expression.Lambda<Func<object, bool>>(binaryExpression, parameterExpression);
-                        // // var func = lambda.Compile();
-                        //
-                        // var expression = Expression.Lambda<Func<object, object, bool>>(refz.Body, refz.Parameters);
-                        // // var compile = expression.Compile();
-                        // // compile.DynamicInvoke();
-                        // state.Stack.Push(
-                        //     Expression.Invoke(
-                        //         firstOrDefault.ReplacementExpression,
-                        //         !methodInfo.IsStatic ? args.Prepend(instance) : args
-                        //     )
-                        // );
-                    }
-                    else
-                    {
-                        state.Body.Add(
-                            Expression.Invoke(
-                                firstOrDefault.ReplacementExpression,
-                                instance
-                            )
-                        );
-                    }
+                    // Call the regular method
+                    state.Stack.Push(
+                        Expression.Call(instance, methodInfo, args)
+                    );
                 }
                 else
                 {
-                    state.Stack.Push(
-                        Expression.Call(
-                            instance,
-                            methodInfo,
-                            args
-                        )
-                    );
+                    if (matchingShim.ReplacementExpression.NodeType != ExpressionType.Lambda)
+                        throw new Exception("The replacement expression must be a lambda expression");
+
+                    if (matchingShim.IsInstanceSpecific)
+                    {
+                        var matchVar = Expression.Variable(typeof(bool), "match");
+                        var parameterExpression = Expression.Parameter(_instance.GetType(), "instance");
+                        // var lambdaExpression =
+                        //     Expression.Lambda(
+                        //         Expression.Block(
+                        //             new[] { matchVar },
+                        //             Expression.IfThenElse(
+                        //
+                        //                 // Check whether the given instance matches the shim's expected instance 
+                        //                 Expression.ReferenceEqual(
+                        //                     Expression.Constant(matchingShim.Instance),
+                        //                     instance
+                        //                 ),
+                        //                 Expression.Assign(matchVar, Expression.Constant(true)),
+                        //                 Expression.Assign(matchVar, Expression.Constant(false))
+                        //             ),
+                        //             matchVar
+                        //         ),
+                        //         parameterExpression
+                        //     );
+                        var lambdaExpression =
+                            Expression.Lambda(
+                                Expression.Block(
+                                    new[] { matchVar },
+                                    Expression.IfThenElse(
+                        
+                                        // Check whether the given instance matches the shim's expected instance 
+                                        Expression.ReferenceEqual(
+                                            Expression.Constant(matchingShim.Instance),
+                                            instance
+                                        ),
+                                        Expression.Assign(matchVar, Expression.Constant(true)),
+                                        Expression.Assign(matchVar, Expression.Constant(false))
+                                    ),
+                                    matchVar
+                                ),
+                                state.Arguments
+                            );
+                        var result = lambdaExpression.Compile().DynamicInvoke(_instance);
+
+                        if (result is not bool instanceMatchesShimExpectedInstance) throw new Exception("Don't know how to handle this...");
+
+                        if (instanceMatchesShimExpectedInstance)
+                        {
+                            // Invoke the shim
+                            state.Stack.Push(
+                                Expression.Invoke(
+                                    matchingShim.ReplacementExpression,
+                                    !methodInfo.IsStatic ? args.Prepend(instance) : args
+                                )
+                            );
+                        }
+                        else
+                        {
+                            // Call the regular method
+                            state.Stack.Push(
+                                Expression.Call(instance, methodInfo, args)
+                            );
+                        }
+                    }
+                    else
+                    {
+                        // The shim is not instance specific
+                        state.Stack.Push(
+                            Expression.Invoke(
+                                matchingShim.ReplacementExpression,
+                                !methodInfo.IsStatic ? args.Prepend(instance) : args
+                            )
+                        );
+                    }
                 }
             }
         }

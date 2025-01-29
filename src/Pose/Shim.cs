@@ -18,6 +18,8 @@ namespace Pose
         private bool _setter;
         private Expression _expression;
 
+        internal bool IsInstanceSpecific => _instance != null;
+
         internal MethodBase Original
         {
             get

@@ -13,6 +13,14 @@ namespace Pose.Tests
             );
         }
 
+        public static BinaryExpression LocalField<TType>(Expression<Func<TType>> expression, Func<Expression, Expression> assignValue)
+        {
+            return Expression.Assign(
+                expression.Body,
+                assignValue(expression.Body)
+            );
+        }
+
         public static TReturn SetAndReturn<TReturn>(Expression expression, TReturn returnValue)
         {
             var lambda = Expression.Lambda<Func<TReturn>>(
@@ -23,6 +31,17 @@ namespace Pose.Tests
             );
 
             return lambda.Compile().Invoke();
+        }
+        
+        public static void Set(Expression expression)
+        {
+            var lambda = Expression.Lambda<Action>(
+                Expression.Block(
+                    expression
+                )
+            );
+
+            lambda.Compile().Invoke();
         }
     }
 }
