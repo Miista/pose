@@ -60,6 +60,18 @@ namespace Pose.IL
             foreach (Instruction instruction in ifTargets)
                 targets.TryAdd(instruction.Offset, Expression.Label());
 
+            var switchTargets = instructions
+                .Where(i => i.Operand is Instruction[])
+                .Select(i => i.Operand as Instruction[]);
+            
+            foreach (var switchInstructions in switchTargets)
+            {
+                if (switchInstructions == null) throw new Exception("The impossible happened");
+                
+                foreach (var instruction in switchInstructions)
+                    targets.TryAdd(instruction.Offset, Expression.Label());
+            }
+            
             foreach (var instruction in instructions)
             {
                 Console.WriteLine(instruction);
@@ -514,6 +526,10 @@ namespace Pose.IL
                 {
                     TransformRet(state);
                 }
+                else if (instruction.OpCode == OpCodes.Switch)
+                {
+                    TransformSwitch(state, instruction, targets);
+                }
                 else
                 {
                     throw new NotImplementedException(instruction.OpCode.Name);
@@ -526,6 +542,16 @@ namespace Pose.IL
             );
 
             return Expression.Lambda(body, state.Arguments).Compile();
+        }
+
+        private void TransformSwitch(State state, Instruction instruction, Dictionary<int, LabelTarget> targets)
+        {
+            var switchInstructions = (Instruction[])instruction.Operand;
+            var targetLabels = switchInstructions.Select(i => targets[i.Offset]).ToArray();
+            var switchCases = targetLabels.Select((label, index) => Expression.SwitchCase(Expression.Goto(label), Expression.Constant(index))).ToArray();
+            state.Body.Add(
+                Expression.Switch(state.Stack.Peek(), switchCases)
+            );
         }
 
         private void TransformLdNull(State state)
@@ -612,7 +638,7 @@ namespace Pose.IL
             else
             {
                 state.Stack.Push(
-                    Expression.Add(
+                    Expression.Subtract(
                         left, right
                     )
                 );

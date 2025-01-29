@@ -106,6 +106,46 @@ namespace Pose.Sandbox
         
         public static void Main(string[] args)
         {
+            {
+                // Switch case
+                // Parameter to switch on
+                var value = Expression.Parameter(typeof(int), "value");
+    
+                // Create switch cases
+                var cases = new[]
+                {
+                    Expression.SwitchCase(
+                        Expression.Constant("One"),
+                        Expression.Constant(1)
+                    ),
+                    Expression.SwitchCase(
+                        Expression.Constant("Two"),
+                        Expression.Constant(2)
+                    ),
+                    Expression.SwitchCase(
+                        Expression.Constant("Three"),
+                        Expression.Constant(3)
+                    )
+                };
+    
+                // Default value
+                var defaultCase = Expression.Constant("Other");
+    
+                // Create the switch
+                var switchExpr = Expression.Switch(
+                    value,          // The value to switch on
+                    defaultCase,    // Default case
+                    cases          // Array of cases
+                );
+                var lambda = Expression.Lambda<Func<int, string>>(
+                    switchExpr,
+                    value
+                );
+
+                var compiled = lambda.Compile();
+                var result = compiled(2); // Returns "Two"
+            }
+            
             var instance = new T();
             var instance1 = new T();
 

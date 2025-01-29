@@ -265,9 +265,20 @@ namespace Pose.Tests
             result.Should().Be(1, because: "that is the value assigned in the matched catch block");
         }
 
+        internal class DummyClass
+        {
+            public int DummyMethod()
+            {
+                return default(int);
+            }
+        }
+        
         public class OpCodes
         {
-            private static readonly Shim DummyShim = Shim.Replace(() => Console.WriteLine(Is.A<string>())).With(delegate(string s) { Console.WriteLine(s); });
+            // private static readonly Shim DummyShim = Shim.Replace(() => Console.WriteLine(Is.A<string>())).With(delegate(string s) { Console.WriteLine(s); });
+            private static readonly Shim DummyShim = Shim
+                .Replace(() => Is.A<DummyClass>().DummyMethod())
+                .WithExpression((DummyClass @this) => default(int));
 
             [Fact]
             public void Can_handle_InlineI8()
@@ -339,6 +350,31 @@ namespace Pose.Tests
                 value.Should().Be(double.MaxValue, because: "that is the value assigned");
             }
             
+            [Theory]
+            [InlineData(int.MaxValue, int.MinValue)]
+            [InlineData(2, 2)]
+            [InlineData(3, 3)]
+            [InlineData(4, 4)]
+            public void Can_handle_Switch_theory(int input, int expected)
+            {
+                var value = default(int);
+                Action act = () => PoseContext.Isolate(
+                    () =>
+                    {
+                        switch(input)
+                        {
+                            case 1:  value = 1; break;
+                            case 2:  value = 2; break;
+                            case 3:  value = 3; break;
+                            case 4:  value = 4; break;
+                            default: value = int.MinValue; break;
+                        }
+                    }, DummyShim);
+
+                act.Should().NotThrow();
+                value.Should().Be(expected, because: "that is the value assigned");
+            }
+            
             [Fact]
             public void Can_handle_Switch()
             {
@@ -352,6 +388,7 @@ namespace Pose.Tests
                             case 1:  value = 1; break;
                             case 2:  value = 2; break;
                             case 3:  value = 3; break;
+                            case 4:  value = 4; break;
                             default: value = int.MinValue; break;
                         }
                     }, DummyShim);
