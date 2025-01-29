@@ -445,7 +445,7 @@ namespace Pose.Tests
             {
                 private class Instance
                 {
-                    public string Text { get; set; }
+                    public string Text { get; set; } = "lol";
                 }
 
                 [Fact]

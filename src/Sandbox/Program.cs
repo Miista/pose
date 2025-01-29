@@ -57,6 +57,7 @@ namespace Pose.Sandbox
 
         public class T
         {
+            public string _value;
             public double value { get; set; }
             public bool WasCalled { get; set; }
         }
@@ -105,6 +106,37 @@ namespace Pose.Sandbox
         
         public static void Main(string[] args)
         {
+            var instance = new T();
+            var instance1 = new T();
+
+            var memberExpression = Expression.Field(
+                Expression.Constant(instance),
+                typeof(T),
+                nameof(T._value)
+            );
+
+            var ifThenElse = Expression.IfThenElse(
+                test:
+                Expression.ReferenceEqual(
+                    memberExpression,
+                    Expression.Constant("s")
+                ),
+                Expression.Call(
+                    null,
+                    typeof(Console).GetMethod("WriteLine", new Type[] { typeof(String) }),
+                    Expression.Constant("The condition is true.")
+                ),
+                Expression.Call(
+                    null,
+                    typeof(Console).GetMethod("WriteLine", new Type[] { typeof(String) }),
+                    Expression.Constant("The condition is false.")
+                )
+            );
+
+            var expression1 = Expression.Lambda<Action>(ifThenElse);
+            var compile = expression1.Compile();
+            var invoke = compile.DynamicInvoke();
+
             int tt = 0;
             
             Action<TType> SetX<TType>(Expression<Func<TType>> expression)

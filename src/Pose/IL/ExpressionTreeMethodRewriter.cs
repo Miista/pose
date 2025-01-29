@@ -23,23 +23,27 @@ namespace Pose.IL
         private readonly MethodBase _method;
         private readonly Type _owningType;
         private readonly bool _isInterfaceDispatch;
+
+        private readonly object _instance;
         
         private int _exceptionBlockLevel;
         private TypeInfo _constrainedType;
 
-        private ExpressionTreeMethodRewriter(MethodBase method, Type owningType, bool isInterfaceDispatch)
+        private ExpressionTreeMethodRewriter(MethodBase method, Type owningType, bool isInterfaceDispatch, object instance)
         {
             _method = method ?? throw new ArgumentNullException(nameof(method));
             _owningType = owningType ?? throw new ArgumentNullException(nameof(owningType));
             _isInterfaceDispatch = isInterfaceDispatch;
+            _instance = instance ?? throw new ArgumentNullException(nameof(instance));
         }
 
-        public static ExpressionTreeMethodRewriter CreateRewriter(MethodBase method, bool isInterfaceDispatch)
+        public static ExpressionTreeMethodRewriter CreateRewriter(MethodBase method, bool isInterfaceDispatch, object instance)
         {
             return new ExpressionTreeMethodRewriter(
                 method: method,
                 owningType: method.DeclaringType,
-                isInterfaceDispatch: isInterfaceDispatch
+                isInterfaceDispatch: isInterfaceDispatch,
+                instance: instance
             );
         }
         
@@ -1212,12 +1216,150 @@ namespace Pose.IL
                 {
                     if (firstOrDefault.ReplacementExpression.NodeType == ExpressionType.Lambda)
                     {
-                        state.Stack.Push(
-                            Expression.Invoke(
-                                firstOrDefault.ReplacementExpression,
-                                !methodInfo.IsStatic ? args.Prepend(instance) : args
-                            )
+                        if (firstOrDefault.Instance == null)
+                        {
+                            // The shim is not instance specific
+                            state.Stack.Push(
+                                Expression.Invoke(
+                                    firstOrDefault.ReplacementExpression,
+                                    !methodInfo.IsStatic ? args.Prepend(instance) : args
+                                )
+                            );
+                            return;
+                        }
+                        
+                        // var referenceEqual = Expression.ReferenceEqual(
+                            // instance,
+                            // instance
+                        // );
+                        // Expression<Func<object, object, bool>> refz = (object o1, object o2) => o1 == o2;
+
+                        var match = Expression.Variable(typeof(bool), "match");
+                        var equal = Expression.ReferenceEqual(
+                            Expression.Constant(firstOrDefault.Instance),
+                            instance
                         );
+                        var l = Expression.Lambda(
+                            Expression.Block(
+                                new[] { match },
+                                Expression.IfThenElse(
+                                    equal,
+                                    Expression.Assign(match, Expression.Constant(true)),
+                                    Expression.Assign(match, Expression.Constant(false))
+                                ),
+                                match
+                            ),
+                            state.Arguments
+                        );
+                        var invoke = l.Compile().DynamicInvoke(_instance);
+
+                        if (invoke is bool b)
+                        {
+                            if (b)
+                            {
+                                state.Stack.Push(
+                                    Expression.Invoke(
+                                        firstOrDefault.ReplacementExpression,
+                                        !methodInfo.IsStatic ? args.Prepend(instance) : args
+                                    )
+                                );
+                            }
+                            else
+                            {
+                                state.Stack.Push(
+                                    Expression.Call(
+                                        instance,
+                                        methodInfo,
+                                        args
+                                    )
+                                );
+
+                            }
+                        }
+
+                        return;
+                        
+                        var isTrue = Expression.Call(
+                            null,
+                            typeof(Console).GetMethod("WriteLine", new Type[] { typeof(String) }),
+                            Expression.Constant("The condition is true.")
+                        );
+                        var invokeTrue = Expression.Invoke(
+                            firstOrDefault.ReplacementExpression,
+                            !methodInfo.IsStatic ? args.Prepend(instance) : args
+                        );
+                        
+                        var isFalse = Expression.Call(
+                            null,
+                            typeof(Console).GetMethod("WriteLine", new Type[] { typeof(String) }),
+                            Expression.Constant("The condition is false.")
+                        );
+                        var invokeFalse = Expression.Call(
+                            instance,
+                            methodInfo,
+                            args
+                        );
+                        var result = Expression.Variable(methodInfo.ReturnType, "result");
+                        var lambdaExpression = Expression.Lambda(
+                            Expression.Block(
+                                new[] { result },
+                                Expression.IfThenElse(
+                                    equal,
+                                    Expression.Block(
+                                        isTrue,
+                                        Expression.Assign(result, invokeTrue)
+                                    ),
+                                    Expression.Block(
+                                        isFalse,
+                                        Expression.Assign(result, invokeFalse)
+                                    )
+                                ),
+                                result
+                            ),
+                            state.Arguments
+                        );
+                        var dynamicInvoke = lambdaExpression.Compile().DynamicInvoke(_instance);
+                        
+                        state.Stack.Push(Expression.Constant(dynamicInvoke, methodInfo.ReturnType));
+
+                        // var blockExpression = Expression.Block(
+                        //     Expression.IfThenElse(
+                        //         refz.Body,
+                        //         // Expression.Invoke(
+                        //         //     firstOrDefault.ReplacementExpression,
+                        //         //     !methodInfo.IsStatic ? args.Prepend(instance) : args
+                        //         // ),
+                        //         isTrue,
+                        //         // Expression.Call(
+                        //         //     instance,
+                        //         //     methodInfo,
+                        //         //     args
+                        //         // )
+                        //         isFalse
+                        //     )
+                        //     // Expression.Invoke(
+                        //     //     firstOrDefault.ReplacementExpression,
+                        //     //     !methodInfo.IsStatic ? args.Prepend(instance) : args
+                        //     // )
+                        // );
+                        //
+                        // var parameterExpression = Expression.Parameter(typeof(object), "s");
+                        // var binaryExpression = Expression.ReferenceEqual(
+                        //     instance,
+                        //     parameterExpression
+                        // );
+                        // var lambda = Expression.Lambda<Func<object, bool>>(binaryExpression, parameterExpression);
+                        // // var func = lambda.Compile();
+                        //
+                        // var expression = Expression.Lambda<Func<object, object, bool>>(refz.Body, refz.Parameters);
+                        // // var compile = expression.Compile();
+                        // // compile.DynamicInvoke();
+                        // state.Stack.Push(
+                        //     Expression.Invoke(
+                        //         firstOrDefault.ReplacementExpression,
+                        //         !methodInfo.IsStatic ? args.Prepend(instance) : args
+                        //     )
+                        // );
                     }
                     else
                     {

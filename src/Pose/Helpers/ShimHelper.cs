@@ -6,6 +6,7 @@ using System.Reflection;
 
 using Pose.Exceptions;
 using Pose.Extensions;
+using Exception = System.Exception;
 
 namespace Pose.Helpers
 {
@@ -85,7 +86,7 @@ namespace Pose.Helpers
             return typeof(Expression<>).MakeGenericType(expression.Type).GetProperty(nameof(Expression<Delegate>.Parameters))?.GetValue(expression) as
                 ICollection<ParameterExpression> ?? throw new Exception($"Expression {expression} does not have any parameters");
         }
-            
+
         public static void ValidateReplacementExpressionSignature(MethodBase originalMethod, Expression originalExpression, Expression replacementExpression, Type type, bool setter)
         {
             var original = originalExpression as LambdaExpression ?? throw new Exception($"Cannot cast expression to {nameof(LambdaExpression)}");
@@ -97,10 +98,8 @@ namespace Pose.Helpers
             
             var validReturnType = original.ReturnType;
             var shimReturnType = replacement.ReturnType;
-            
-            var validParameterTypes = (original.Body as MethodCallExpression).Arguments
-                .Select(p => p.Type)
-                .ToArray();
+
+            var validParameterTypes = GetMethodFromExpression(original.Body, setter, out _).GetParameters().Select(p => p.ParameterType).ToArray();
             var shimParameterTypes = GetParameters(replacementExpression)
                 .Select(p => p.Type)
                 .Skip(isStaticOrConstructor ? 0 : 1)

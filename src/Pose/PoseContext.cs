@@ -21,7 +21,7 @@ namespace Pose
             Shims = shims;
 
             var delegateType = typeof(Action<>).MakeGenericType(entryPoint.Target.GetType());
-            var rewriter = ExpressionTreeMethodRewriter.CreateRewriter(entryPoint.Method, false);
+            var rewriter = ExpressionTreeMethodRewriter.CreateRewriter(entryPoint.Method, false, entryPoint.Target);
             
 #if TRACE
             Console.WriteLine("----------------------------- Rewriting ----------------------------- ");
