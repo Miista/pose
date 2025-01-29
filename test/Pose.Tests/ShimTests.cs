@@ -683,7 +683,7 @@ namespace Pose.Tests
 
                     var shim = Shim
                         .Replace(() => Is.A<Instance>().Text, true)
-                        .With((ref Instance @this, string prop) => { invocationCount++; });
+                        .WithExpression((Instance @this, string prop) => Set(LocalField(() => invocationCount, Increment)));
 
                     // Pre-act assert
                     invocationCount.Should().Be(0, because: "the shim has not been called yet");
@@ -1059,23 +1059,18 @@ namespace Pose.Tests
                 var getterExecuted = false;
                 var getterShim = Shim
                     .Replace(() => Is.A<Thread>().CurrentCulture)
-                    .With(
-                        (Thread t) =>
-                        {
-                            getterExecuted = true;
-                            return t.CurrentCulture;
-                        }
+                    .WithExpression(
+                        (Thread t) => SetAndReturn(LocalField(() => getterExecuted, true), t.CurrentCulture)
                     );
 
                 var setterExecuted = false;
                 var setterShim = Shim
                     .Replace(() => Is.A<Thread>().CurrentCulture, true)
-                    .With(
-                        (Thread t, CultureInfo value) =>
-                        {
-                            setterExecuted = true;
-                            t.CurrentCulture = value;
-                        }
+                    .WithExpression(
+                        (Thread t, CultureInfo value) => Set(
+                            LocalField(() => t.CurrentCulture, value),
+                            LocalField(() => setterExecuted, true)
+                        )
                     );
 
                 // Pre-Act asserts

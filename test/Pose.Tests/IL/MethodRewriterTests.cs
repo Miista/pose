@@ -1,5 +1,6 @@
 // ReSharper disable PossibleNullReferenceException
 
+
 namespace Pose.Tests
 {
     using System;
@@ -9,6 +10,8 @@ namespace Pose.Tests
     using FluentAssertions;
     using IL;
     using Xunit;
+    
+    using static TestHelpers;
     
     public class MethodRewriterTests
     {
@@ -275,11 +278,6 @@ namespace Pose.Tests
         
         public class OpCodes
         {
-            // private static readonly Shim DummyShim = Shim.Replace(() => Console.WriteLine(Is.A<string>())).With(delegate(string s) { Console.WriteLine(s); });
-            private static readonly Shim DummyShim = Shim
-                .Replace(() => Is.A<DummyClass>().DummyMethod())
-                .WithExpression((DummyClass @this) => default(int));
-
             [Fact]
             public void Can_handle_InlineI8()
             {

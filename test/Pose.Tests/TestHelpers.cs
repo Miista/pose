@@ -5,6 +5,13 @@ namespace Pose.Tests
 {
     internal static class TestHelpers
     {
+        public class DummyClass
+        {
+            public int DummyField { get; set; }
+        }
+        
+        public static readonly Shim DummyShim = Shim.Replace(() => Is.A<DummyClass>().DummyField).WithExpression((DummyClass @class) => 42);
+        
         public static BinaryExpression LocalField<TType>(Expression<Func<TType>> expression, TType assignValue)
         {
             return Expression.Assign(
@@ -33,11 +40,11 @@ namespace Pose.Tests
             return lambda.Compile().Invoke();
         }
         
-        public static void Set(Expression expression)
+        public static void Set(params Expression[] expressions)
         {
             var lambda = Expression.Lambda<Action>(
                 Expression.Block(
-                    expression
+                    expressions
                 )
             );
 
