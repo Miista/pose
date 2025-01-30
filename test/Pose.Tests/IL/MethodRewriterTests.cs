@@ -1,6 +1,5 @@
 // ReSharper disable PossibleNullReferenceException
 
-
 namespace Pose.Tests
 {
     using System;
@@ -399,10 +398,13 @@ namespace Pose.Tests
 
             [Theory]
             [MemberData(nameof(Handles_all_opcodes_Data))]
-            public void Handles_all_opcodes(Action body)
+            public void Handles_all_opcodes(OpCode code, Action body)
             {
                 // Act
-                PoseContext.Isolate(body, DummyShim);
+                Action act = () => PoseContext.Isolate(body, DummyShim);
+                
+                // Assert
+                act.Should().NotThrow(because: "opcode '{0}' is supported", code);
             }
 
             // ReSharper disable once InconsistentNaming
@@ -566,10 +568,189 @@ namespace Pose.Tests
                             var x = r % l;
                         }
                     );
+                    yield return TestCase(
+                        EmitCode.Neg,
+                        () =>
+                        {
+                            var i = 1;
+                            var x = -i;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Ldstr,
+                        () =>
+                        {
+                            var i = "Hello";
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Stloc_0, // and Stloc_1, Stloc_2, Stloc_3
+                        () =>
+                        {
+                            int i1, i2, i3, i4;
+                            i1 = 0;
+                            i2 = 0;
+                            i3 = 0;
+                            i4 = 0;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Shl,
+                        () =>
+                        {
+                            var i = 1;
+                            var x = i << 1;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Shr,
+                        () =>
+                        {
+                            var i = 1;
+                            var x = i >> 1;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.And,
+                        () =>
+                        {
+                            var b1 = true;
+                            var b2 = false;
+                            var x = b1 && b2;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Or,
+                        () =>
+                        {
+                            var b1 = true;
+                            var b2 = false;
+                            var x = b1 || b2;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Xor,
+                        () =>
+                        {
+                            var b1 = true;
+                            var b2 = false;
+                            var x = b1 ^ b2;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Not,
+                        () =>
+                        {
+                            var b = true;
+                            var x = !b;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Ceq,
+                        () =>
+                        {
+                            var i1 = 1;
+                            var i2 = 2;
+                            var x = i1 == i2;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Cgt,
+                        () =>
+                        {
+                            var i1 = 1;
+                            var i2 = 2;
+                            var x = i1 > i2;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Clt,
+                        () =>
+                        {
+                            var i1 = 1;
+                            var i2 = 2;
+                            var x = i1 < i2;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Cgt_Un,
+                        () =>
+                        {
+                            var i1 = 1;
+                            var i2 = 2;
+                            var x = i1 > i2;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Clt_Un,
+                        () =>
+                        {
+                            var i1 = 1;
+                            var i2 = 2;
+                            var x = i1 < i2;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Ldloc_0, // and Ldloc_1, Ldloc_2, Ldloc_3
+                        () =>
+                        {
+                            int i1, i2, i3, i4;
+                            i1 = 0;
+                            i2 = 0;
+                            i3 = 0;
+                            i4 = 0;
+                            var x = i1;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Box,
+                        () =>
+                        {
+                            var i = 1;
+                            var x = (object)i;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Newarr,
+                        () =>
+                        {
+                            var x = new int[1];
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Newobj,
+                        () =>
+                        {
+                            var x = new DummyClass();
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Call,
+                        () =>
+                        {
+                            var x = new DummyClass().DummyMethod();
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Initobj,
+                        () =>
+                        {
+                            var x = default(int);
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Isinst,
+                        () =>
+                        {
+                            var x = new DummyClass() as object;
+                        }
+                    );
+                    
+                    yield break;
                     
                     object[] TestCase(OpCode code, Action body)
                     {
-                        return new object[] { body };
+                        return new object[] { code, body };
                     }
                 }
             }

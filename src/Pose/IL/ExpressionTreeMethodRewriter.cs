@@ -1,14 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using Mono.Reflection;
-using Pose.Exceptions;
-using Pose.Helpers;
+using Pose.Extensions;
 
 namespace Pose.IL
 {
@@ -591,10 +589,15 @@ namespace Pose.IL
 
         private void TransformStLoc(State state, int index)
         {
+            var value = state.Stack.Pop();
+            var variable = state.Variables[index];
+
+            var boxedValue = value.EnsureExpressionType(variable.Type);
+            
             state.Body.Add(
                 Expression.Assign(
-                    state.Variables[index],
-                    state.Stack.Pop()
+                    variable,
+                    boxedValue
                 )
             );
         }
@@ -707,7 +710,7 @@ namespace Pose.IL
             var left = state.Stack.Pop();
 
             state.Stack.Push(
-                Expression.Equal(left, right)
+                Expression.Equal(left, right.EnsureExpressionType(left.Type))
             );
         }
 
