@@ -11,6 +11,8 @@ namespace Pose.Tests
     using IL;
     using Xunit;
     
+    using EmitCode = System.Reflection.Emit.OpCodes;
+    
     using static TestHelpers;
     
     public class MethodRewriterTests
@@ -393,6 +395,183 @@ namespace Pose.Tests
 
                 act.Should().NotThrow();
                 value.Should().Be(int.MinValue, because: "that is the value assigned");
+            }
+
+            [Theory]
+            [MemberData(nameof(Handles_all_opcodes_Data))]
+            public void Handles_all_opcodes(Action body)
+            {
+                // Act
+                PoseContext.Isolate(body, DummyShim);
+            }
+
+            // ReSharper disable once InconsistentNaming
+            public static IEnumerable<object[]> Handles_all_opcodes_Data
+            {
+                get
+                {
+                    // yield return TestCase(
+                    //     EmitCode.Ldc_I4_M1,
+                    //     () =>
+                    //     {
+                    //         var i = -1;
+                    //     }
+                    // );
+                    // yield return TestCase(
+                    //     EmitCode.Ldc_I4_1,
+                    //     () =>
+                    //     {
+                    //         var i = 1;
+                    //     }
+                    // );
+                    // yield return TestCase(
+                    //     EmitCode.Ldc_I4_2,
+                    //     () =>
+                    //     {
+                    //         var i = 2;
+                    //     }
+                    // );
+                    // yield return TestCase(
+                    //     EmitCode.Ldc_I4_3,
+                    //     () =>
+                    //     {
+                    //         var i = 3;
+                    //     }
+                    // );
+                    // yield return TestCase(
+                    //     EmitCode.Ldc_I4_4,
+                    //     () =>
+                    //     {
+                    //         var i = 4;
+                    //     }
+                    // );
+                    // yield return TestCase(
+                    //     EmitCode.Ldc_I4_5,
+                    //     () =>
+                    //     {
+                    //         var i = 5;
+                    //     }
+                    // );
+                    // yield return TestCase(
+                    //     EmitCode.Ldc_I4_6,
+                    //     () =>
+                    //     {
+                    //         var i = 6;
+                    //     }
+                    // );
+                    // yield return TestCase(
+                    //     EmitCode.Ldc_I4_7,
+                    //     () =>
+                    //     {
+                    //         var i = 7;
+                    //     }
+                    // );
+                    // yield return TestCase(
+                    //     EmitCode.Ldc_I4_8,
+                    //     () =>
+                    //     {
+                    //         var i = 8;
+                    //     }
+                    // );
+                    yield return TestCase(
+                        EmitCode.Add,
+                        () =>
+                        {
+                            var l = 1;
+                            var r = 2;
+                            var x = l + r;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Add_Ovf,
+                        () =>
+                        {
+                            checked
+                            {
+                                var l = 1;
+                                var r = 2;
+                                var x = l + r;
+                            }
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Add_Ovf_Un,
+                        () =>
+                        {
+                            unchecked
+                            {
+                                var l = 1;
+                                var r = 2;
+                                var x = l + r;
+                            }
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Sub,
+                        () =>
+                        {
+                            var l = 1;
+                            var r = 2;
+                            var x = r - l;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Sub_Ovf,
+                        () =>
+                        {
+                            checked
+                            {
+                                var l = 1;
+                                var r = 2;
+                                var x = r - l;
+                            }
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Sub_Ovf_Un,
+                        () =>
+                        {
+                            unchecked
+                            {
+                                var l = 1;
+                                var r = int.MinValue;
+                                var x = r - l;
+                            }
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Mul,
+                        () =>
+                        {
+                            var l = 1;
+                            var r = 2;
+                            var x = l * r;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Div,
+                        () =>
+                        {
+                            var l = 1;
+                            var r = 2;
+                            var x = r / l;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Rem,
+                        () =>
+                        {
+                            var l = 1;
+                            var r = 2;
+                            var x = r % l;
+                        }
+                    );
+                    
+                    object[] TestCase(OpCode code, Action body)
+                    {
+                        return new object[] { body };
+                    }
+                }
             }
         }
     }

@@ -10,64 +10,30 @@ namespace Pose
     public partial class Shim
     {
         private readonly Expression _originalExpression;
-        
-        private MethodBase _original;
-        private Delegate _replacement;
-        private object _instance;
-        private Type _type;
+
         private bool _setter;
-        private Expression _expression;
 
-        internal bool IsInstanceSpecific => _instance != null;
+        internal bool IsInstanceSpecific => Instance != null;
 
-        internal MethodBase Original
-        {
-            get
-            {
-                return _original;
-            }
-        }
-
-        internal Delegate Replacement
-        {
-            get
-            {
-                return _replacement;
-            }
-        }
-
-        internal object Instance
-        {
-            get
-            {
-                return _instance;
-            }
-        }
-
-        internal Type Type
-        {
-            get
-            {
-                return _type;
-            }
-        }
-
-        internal Expression Expression
-        {
-            get { return _expression; }
-        }
-        
+        internal MethodBase Original { get; }
+        internal Delegate Replacement { get; private set; }
+        internal object Instance { get; }
+        internal Type Type { get; }
         internal Expression ReplacementExpression { get; private set; }
         
-        private Shim(Expression originalExpression, MethodBase original, object instanceOrType, Expression expression)
+        private Shim(Expression originalExpression, MethodBase original, object instanceOrType)
         {
-            _originalExpression = originalExpression;
-            _original = original;
+            _originalExpression = originalExpression ?? throw new ArgumentNullException(nameof(originalExpression));
+            Original = original ?? throw new ArgumentNullException(nameof(original));
+            
             if (instanceOrType is Type type)
-                _type = type;
+            {
+                Type = type;
+            }
             else
-                _instance = instanceOrType;
-            _expression = expression;
+            {
+                Instance = instanceOrType;
+            }
         }
 
         [ExcludeFromCodeCoverage(Justification = "Forwards to ReplaceImpl")]
@@ -81,21 +47,33 @@ namespace Pose
         private static Shim ReplaceImpl<T>(Expression<T> expression, bool setter)
         {
             var methodBase = ShimHelper.GetMethodFromExpression(expression.Body, setter, out var instance);
-            return new Shim(expression, methodBase, instance, expression) { _setter = setter };
+            return new Shim(expression, methodBase, instance) { _setter = setter };
         }
 
         private Shim WithImpl(Delegate replacement)
         {
-            _replacement = replacement;
-            ShimHelper.ValidateReplacementMethodSignature(this._original, this._replacement.Method, _instance?.GetType() ?? _type, _setter);
+            Replacement = replacement;
+            ShimHelper.ValidateReplacementMethodSignature(
+                original: Original,
+                replacement: Replacement.Method,
+                type: Instance?.GetType() ?? Type,
+                setter: _setter
+            );
+            
             return this;
         }
         
         private Shim WithImpl(Expression replacement)
         {
             ReplacementExpression = replacement;
-            //_replacement = replacement;
-            ShimHelper.ValidateReplacementExpressionSignature(this._original, this._originalExpression, ReplacementExpression, _instance?.GetType() ?? _type, _setter);
+            ShimHelper.ValidateReplacementExpressionSignature(
+                originalMethod: Original,
+                originalExpression: _originalExpression,
+                replacementExpression: ReplacementExpression,
+                type: Instance?.GetType() ?? Type,
+                setter: _setter
+            );
+            
             return this;
         }
     }
