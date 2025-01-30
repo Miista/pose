@@ -410,69 +410,69 @@ namespace Pose.Tests
             {
                 get
                 {
-                    // yield return TestCase(
-                    //     EmitCode.Ldc_I4_M1,
-                    //     () =>
-                    //     {
-                    //         var i = -1;
-                    //     }
-                    // );
-                    // yield return TestCase(
-                    //     EmitCode.Ldc_I4_1,
-                    //     () =>
-                    //     {
-                    //         var i = 1;
-                    //     }
-                    // );
-                    // yield return TestCase(
-                    //     EmitCode.Ldc_I4_2,
-                    //     () =>
-                    //     {
-                    //         var i = 2;
-                    //     }
-                    // );
-                    // yield return TestCase(
-                    //     EmitCode.Ldc_I4_3,
-                    //     () =>
-                    //     {
-                    //         var i = 3;
-                    //     }
-                    // );
-                    // yield return TestCase(
-                    //     EmitCode.Ldc_I4_4,
-                    //     () =>
-                    //     {
-                    //         var i = 4;
-                    //     }
-                    // );
-                    // yield return TestCase(
-                    //     EmitCode.Ldc_I4_5,
-                    //     () =>
-                    //     {
-                    //         var i = 5;
-                    //     }
-                    // );
-                    // yield return TestCase(
-                    //     EmitCode.Ldc_I4_6,
-                    //     () =>
-                    //     {
-                    //         var i = 6;
-                    //     }
-                    // );
-                    // yield return TestCase(
-                    //     EmitCode.Ldc_I4_7,
-                    //     () =>
-                    //     {
-                    //         var i = 7;
-                    //     }
-                    // );
-                    // yield return TestCase(
-                    //     EmitCode.Ldc_I4_8,
-                    //     () =>
-                    //     {
-                    //         var i = 8;
-                    //     }
-                    // );
+                    yield return TestCase(
+                        EmitCode.Ldc_I4_M1,
+                        () =>
+                        {
+                            var i = -1;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Ldc_I4_1,
+                        () =>
+                        {
+                            var i = 1;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Ldc_I4_2,
+                        () =>
+                        {
+                            var i = 2;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Ldc_I4_3,
+                        () =>
+                        {
+                            var i = 3;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Ldc_I4_4,
+                        () =>
+                        {
+                            var i = 4;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Ldc_I4_5,
+                        () =>
+                        {
+                            var i = 5;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Ldc_I4_6,
+                        () =>
+                        {
+                            var i = 6;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Ldc_I4_7,
+                        () =>
+                        {
+                            var i = 7;
+                        }
+                    );
+                    yield return TestCase(
+                        EmitCode.Ldc_I4_8,
+                        () =>
+                        {
+                            var i = 8;
+                        }
+                    );
                     yield return TestCase(
                         EmitCode.Add,
                         () =>
