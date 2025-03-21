@@ -54,6 +54,10 @@
     <!-- .NET 8 -->
     <file src="net8.0\*.dll" target="lib\net8.0" />
     <file src="net8.0\*.xml" target="lib\net8.0" />
+
+    <!-- .NET 9 -->
+    <file src="net9.0\*.dll" target="lib\net9.0" />
+    <file src="net9.0\*.xml" target="lib\net9.0" />
     
 	  <file src="..\..\..\..\README.md" target="docs\" />
   </files>
