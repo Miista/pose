@@ -16,7 +16,7 @@ using Xunit;
 
 namespace Pose.Tests.Regressions
 {
-    public class PoserIgnoringEarlyReturnStatementTests
+    public class EarlyReturnStatement_61
     {
         [Fact(DisplayName = "Poser ignoring early return statement #61")]
         public void Does_not_ignore_early_return_statement()
