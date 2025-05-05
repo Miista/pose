@@ -308,10 +308,6 @@ namespace Pose.IL
             else if (opCode == OpCodes.Blt_Un_S) opCode = OpCodes.Blt_Un;
             else if (opCode == OpCodes.Leave_S) opCode = OpCodes.Leave;
 
-            // Check if 'Leave' opcode is being used in an exception block,
-            // only emit it if that's not the case
-            if (opCode == OpCodes.Leave && _exceptionBlockLevel > 0) return;
-
             ilGenerator.Emit(opCode, targetLabel);
         }
 

@@ -3,9 +3,10 @@ using FluentAssertions;
 using Xunit;
 using DateTime = System.DateTime;
 
-namespace Pose.Tests
+namespace Pose.Tests.Regressions
 {
-    public class RegressionTests
+    // ReSharper disable once InconsistentNaming
+    public class EnumIsDefined_26
     {
         private enum TestEnum { A }
         
