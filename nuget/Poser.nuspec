@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Poser</id>
-    <version>2.1.0</version>
+    <version>2.1.1</version>
     <title>Pose</title>
     <authors>Søren Guldmund</authors>
     <owners>Søren Guldmund</owners>
@@ -13,10 +13,10 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <tags>pose;mocking;testing;unit-test;isolation-framework;test-framework</tags>
     <description>Replace any .NET method (including static and non-virtual) with a delegate</description>
-    <copyright>Copyright 2024</copyright>
+    <copyright>Copyright 2025</copyright>
 	  <readme>docs\README.md</readme>
     <releaseNotes>
-      Add support for shimming operators
+      Emit `leave` instructions when used within exception context
 	  </releaseNotes>
 
     <dependencies>
