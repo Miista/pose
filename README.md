@@ -190,6 +190,21 @@ Shimming of the following operators is not supported:
 * **Breakpoints** - At this time any breakpoints set anywhere in the isolated code and its execution path will not be hit. However, breakpoints set within a shim replacement delegate are hit.
 * **Exceptions** - At this time all unhandled exceptions thrown in isolated code and its execution path are always wrapped in `System.Reflection.TargetInvocationException`.
 * **Mocks & Asserts** - Mock setups and asserts must not be done within the isolated code. This is because the isolated code is executed in a different context and not the test context.
+  Following is the correct way to include mock setups and asserts when using Poser:
+
+  ```csharp
+  var osShim = Shim.Replace(() => OperatingSystem.IsWindows()).With(() => false); 
+
+  var result = true;
+  PoseContext.Isolate(() =>
+    {
+      // Store the result
+      result = OperatingSystem.IsWindows();
+    }, osShim);
+  
+  // Assert the result outside the isolated context
+  Assert.False(result);
+  ```
 
 ## Roadmap
 
