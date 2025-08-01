@@ -6,7 +6,10 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-    <DefineConstants></DefineConstants>
+    <DefineConstants>TRACE</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DefineConstants />
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Mono.Reflection.Core" Version="1.1.1" />
