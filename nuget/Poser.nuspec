@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Poser</id>
-    <version>2.1.1</version>
+    <version>2.1.2</version>
     <title>Pose</title>
     <authors>Søren Guldmund</authors>
     <owners>Søren Guldmund</owners>
@@ -16,7 +16,7 @@
     <copyright>Copyright 2025</copyright>
 	  <readme>docs\README.md</readme>
     <releaseNotes>
-      Emit `leave` instructions when used within exception context
+      Remove TRACE constant from release builds to avoid unnecessary overhead.
 	  </releaseNotes>
 
     <dependencies>
