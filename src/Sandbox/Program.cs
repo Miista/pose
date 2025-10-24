@@ -1,6 +1,7 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System;
+using System.Threading.Tasks;
 
 namespace Pose.Sandbox
 {
@@ -52,6 +53,9 @@ namespace Pose.Sandbox
 
             public static OverridenOperatorClass operator +(OverridenOperatorClass l, OverridenOperatorClass r) => default(OverridenOperatorClass);
         }
+        
+        public static async Task<int> IntAsync() => await Task.FromResult(5);
+        public static async Task<int> Int2Async() => await Task.FromResult(10);
         
         public static void Main(string[] args)
         {
@@ -139,13 +143,34 @@ namespace Pose.Sandbox
                     Console.WriteLine(DateTime.Now);
                 }, dateTimeShim);
 #else
-            Console.WriteLine("Other");
+            /**
+             * For future self, the general idea is to:
+             * 1. Get the IL instructions
+             * 2. Inspect the instructions for the state machine method
+             * 3. Get the instructions for that method, and rewrite those as well
+             * 4. Recurse all the way down until there are no more state machine methods to rewrite
+             *
+             * NOTE: All the async methods will then be rewritten as sync methods.s
+             */
             var dateTimeShim = Shim.Replace(() => DateTime.Now).With(() => new DateTime(2004, 1, 1));
+            var int2Shim = Shim.Replace(() => Int2Async()).With(() => Task.FromResult(42));
+            PoseContext.Isolate(async () =>
+            {
+                var i = await IntAsync();
+                Console.WriteLine($"i: {i}");
+                
+                var i2 = await Int2Async();
+                Console.WriteLine($"i2: {i2}");
+            }, dateTimeShim, int2Shim);
+            
+            /*
+            Console.WriteLine("Other");
             PoseContext.Isolate(
                 () =>
                 {
                     Console.WriteLine(DateTime.Now);
                 }, dateTimeShim);
+            */
 #endif
 
             // var dateTimeShim = Shim.Replace(() => T.I).With(() => "L");
