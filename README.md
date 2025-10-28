@@ -7,7 +7,7 @@
 
 Poser allows you to replace any .NET method (including static and non-virtual) with a delegate. It is similar to [Microsoft Fakes](https://msdn.microsoft.com/en-us/library/hh549175.aspx) but unlike it Poser is implemented _entirely_ in managed code (Reflection Emit API). Everything occurs at runtime and in-memory, no unmanaged Profiling APIs and no file system pollution with re-written assemblies.
 
-Poser is cross platform and runs anywhere .NET is supported. It targets .NET Standard 2.0 so it can be used across .NET platforms including .NET Framework, .NET Core, Mono and Xamarin. See version compatibility table [here](https://docs.microsoft.com/en-us/dotnet/standard/net-standard).
+Poser is cross-platform and runs anywhere .NET is supported. It targets .NET Standard 2.0 so it can be used across .NET platforms including .NET Framework, .NET Core, Mono and Xamarin. See version compatibility table [here](https://docs.microsoft.com/en-us/dotnet/standard/net-standard).
 
 ## Installation
 
@@ -117,6 +117,12 @@ Shim structShim = Shim.Replace(() => Is.A<MyStruct>().DoSomething()).With(
 
 _Note: You cannot shim methods on specific instances of Value Types_
 
+### Shim operators
+
+```csharp
+var operatorShim = Shim.Replace(() => Is.A<TimeSpan>() + Is.A<TimeSpan>()).With(
+    delegate(TimeSpan l, TimeSpan r) { return TimeSpan.Zero; });
+```
 ### Isolating your code
 
 ```csharp
@@ -137,9 +143,47 @@ PoseContext.Isolate(() =>
 
     // Outputs "doing someting else with myClass"
     myClass.DoSomething();
+    
+    // Outputs '00:00:00'
+    Console.WriteLine(TimeSpan.FromDays(1) + TimeSpan.FromSeconds(2));
 
-}, consoleShim, dateTimeShim, classPropShim, classShim, myClassShim, structShim);
+}, consoleShim, dateTimeShim, classPropShim, classShim, myClassShim, structShim, operatorShim);
 ```
+
+## Shimming operators
+Operator shimming requires that the class/struct overloads the operator in question.
+
+Poser supports shimming operators of the following kind:
+* Arithmetic
+  * `+x`
+  * `-x`
+  * `!x`
+  * `~x`
+  * `x + y`
+  * `x - y`
+  * `x / y`
+  * `x % y`
+  * `x & y`
+  * `x | y`
+  * `x ^ y`
+  * `x << y`
+  * `x >> y`
+* Equality
+  * `x == y`
+  * `x != y`
+* Comparison
+  * `x < y`
+  * `x > y`
+  * `x <= y`
+  * `x >= y`
+
+In addition to this, both implicit and explicit conversion operators are supported.
+
+### Unsupported operators
+Shimming of the following operators is not supported:
+- `true` and `false` because I cannot find a good way to express the operation in an expression tree.
+- `x >>> y` because expression trees cannot contain this operator. This is a limitation on the part of the compiler.
+- `++` and `--` because these cannot be expressed in an expression tree.
 
 ## Async usage
 ### Shim static async method
@@ -205,6 +249,22 @@ await PoseContext.Isolate(async () =>
 
 * **Breakpoints** - At this time any breakpoints set anywhere in the isolated code and its execution path will not be hit. However, breakpoints set within a shim replacement delegate are hit.
 * **Exceptions** - At this time all unhandled exceptions thrown in isolated code and its execution path are always wrapped in `System.Reflection.TargetInvocationException`.
+* **Mocks & Asserts** - Mock setups and asserts must not be done within the isolated code. This is because the isolated code is executed in a different context and not the test context.
+  Following is the correct way to include mock setups and asserts when using Poser:
+
+  ```csharp
+  var osShim = Shim.Replace(() => OperatingSystem.IsWindows()).With(() => false); 
+
+  var result = true;
+  PoseContext.Isolate(() =>
+    {
+      // Store the result
+      result = OperatingSystem.IsWindows();
+    }, osShim);
+  
+  // Assert the result outside the isolated context
+  Assert.False(result);
+  ```
 
 ## Roadmap
 

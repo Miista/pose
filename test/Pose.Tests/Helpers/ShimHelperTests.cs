@@ -33,7 +33,7 @@ namespace Pose.Tests
             Action act = () => ShimHelper.GetMethodFromExpression(expression.Body, false, out _);
             
             // Assert
-            act.Should().Throw<NotImplementedException>(because: reason);
+            act.Should().Throw<UnsupportedExpressionException>(because: reason);
         }
 
         // ReSharper disable once InconsistentNaming

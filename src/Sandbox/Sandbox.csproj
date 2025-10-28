@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-    <DefineConstants />
+    <DefineConstants></DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

@@ -111,6 +111,34 @@ namespace Pose.Tests
             instanceParameter.ParameterType.Should().Be(stateMachineType, because: "the first parameter is the instance");
         }
 
+        private interface IB
+        {
+            int GetInt();
+        }
+        
+        private class B : IB
+        {
+            public int GetInt() => 10;
+        }
+        
+        [Fact]
+        public void Can_generate_stub_for_virtual_constrained_call()
+        {
+            // Arrange
+            var thisType = typeof(IB);
+            var methodInfo = thisType.GetMethod(nameof(IB.GetInt));
+
+            // Act
+            var dynamicMethod = Stubs.GenerateStubForVirtualCall(methodInfo, typeof(B).GetTypeInfo());
+            
+            // Assert
+            var dynamicParameters = dynamicMethod.GetParameters();
+            dynamicParameters.Should().HaveCount(1, because: "the dynamic method takes just the instance parameter");
+
+            var instanceParameter = dynamicParameters[0];
+            instanceParameter.ParameterType.Should().Be(typeof(B).MakeByRefType(), because: "the first parameter is the instance");
+        }
+
         [Fact]
         public void Can_generate_stub_for_reference_type_constructor()
         {

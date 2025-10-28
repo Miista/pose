@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -55,9 +56,11 @@ namespace Pose
                 _instance = instanceOrType;
         }
 
+        [ExcludeFromCodeCoverage(Justification = "Forwards to ReplaceImpl")]
         public static Shim Replace(Expression<Action> expression, bool setter = false)
             => ReplaceImpl(expression, setter);
 
+        [ExcludeFromCodeCoverage(Justification = "Forwards to ReplaceImpl")]
         public static Shim Replace<T>(Expression<Func<T>> expression, bool setter = false)
             => ReplaceImpl(expression, setter);
 
