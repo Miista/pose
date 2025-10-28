@@ -1133,6 +1133,122 @@ namespace Pose.Tests
                     dt.Should().NotBeEquivalentTo(sealedClass.GetSealedStringAsync().GetAwaiter().GetResult(), because: "that is the original value");
                 }
             }
+
+            /**
+             * In the following class:
+             *  - Pseudo refers to using Task.FromResult
+             *  - Actual refers to using Task.Delay to create a real asynchronous wait
+             */
+            public class Flow
+            {
+                private class Instance
+                {
+                    // ReSharper disable once MemberCanBeMadeStatic.Local
+                    public async Task<string> GetStringAsync()
+                    {
+                        return await Task.FromResult("!");
+                    }
+
+                    // ReSharper disable once MemberCanBeMadeStatic.Local
+                    public async Task<int> GetIntAsync() => await Task.FromResult(1);
+                    
+                    public async Task<int> GetDelayedIntAsync()
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(1));
+                        return 1;
+                    }
+                }
+                
+                [Fact]
+                public async Task Can_shim_async_method_at_first_pseudo_await()
+                {
+                    // Arrange
+                    var action = new Func<Instance, Task<string>>((Instance @this) => Task.FromResult("String"));
+                    var shim = Shim.Replace(() => Is.A<Instance>().GetStringAsync()).With(action);
+
+                    // Act
+                    var dt = await PoseContext.Isolate(
+                        async () =>
+                        {
+                            var instance = new Instance();
+                            var dt1 = await instance.GetStringAsync();
+                            
+                            return dt1;
+                        }, shim);
+
+                    // Assert
+                    dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
+                }                
+                
+                [Fact]
+                public async Task Can_shim_async_method_at_second_pseudo_await()
+                {
+                    // Arrange
+                    var action = new Func<Instance, Task<string>>((Instance @this) => Task.FromResult("String"));
+                    var shim = Shim.Replace(() => Is.A<Instance>().GetStringAsync()).With(action);
+
+                    // Act
+                    var tuple = await PoseContext.Isolate(
+                        async () =>
+                        {
+                            var instance = new Instance();
+                            var it1 = await instance.GetIntAsync();
+                            var dt1 = await instance.GetStringAsync();
+
+                            return Tuple.Create(it1, dt1);
+                        }, shim);
+
+                    // Assert
+                    var (it, dt) = tuple;
+                    it.Should().NotBe(default, because: "the actual method was called");
+                    dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
+                }
+                
+                [Fact]
+                public async Task Can_shim_async_method_at_second_actual_await()
+                {
+                    // Arrange
+                    var action = new Func<Instance, Task<string>>((Instance @this) => Task.FromResult("String"));
+                    var shim = Shim.Replace(() => Is.A<Instance>().GetStringAsync()).With(action);
+
+                    // Act
+                    var tuple = await PoseContext.Isolate(
+                        async () =>
+                        {
+                            var instance = new Instance();
+                            var it1 = await instance.GetDelayedIntAsync();
+                            var dt1 = await instance.GetStringAsync();
+
+                            return Tuple.Create(it1, dt1);
+                        }, shim);
+            
+                    // Assert
+                    var (it, dt) = tuple;
+                    it.Should().NotBe(default, because: "the actual method was called");
+                    dt.Should().BeEquivalentTo("String", because: "that is what the shim is configured to return");
+                }
+                
+                [Fact]
+                public async Task Can_shim_async_method_at_first_actual_await()
+                {
+                    // Arrange
+                    var action = new Func<Instance, Task<int>>((Instance @this) => Task.FromResult(100));
+                    var shim = Shim.Replace(() => Is.A<Instance>().GetDelayedIntAsync()).With(action);
+
+                    // Act
+                    var i = await PoseContext.Isolate(
+                        async () =>
+                        {
+                            var instance = new Instance();
+                            var it = await instance.GetDelayedIntAsync();
+                            
+                            return it;
+                        }, shim);
+
+                    // Assert
+                    i.Should().Be(100, because: "that is what the shim is configured to return");
+                }
+            }
         }
 
         public class ShimSignatureValidation

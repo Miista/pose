@@ -59,8 +59,35 @@ namespace Pose
 #endif
             
             // ReSharper disable once PossibleNullReferenceException
-            var task = methodInfo.CreateDelegate(delegateType).DynamicInvoke() as Task;
-            await task;
+            var task = methodInfo.CreateDelegate(delegateType) as Func<Task>;
+            await task.Invoke();
+        }
+        
+        public static async Task<T> Isolate<T>(Func<Task<T>> entryPoint, params Shim[] shims)
+        {
+            if (shims == null || shims.Length == 0)
+            {
+                await entryPoint.Invoke();
+                return await Task.FromResult(default(T));
+            }
+
+            Shims = shims;
+            StubCache = new Dictionary<MethodBase, DynamicMethod>();
+
+            var delegateType = typeof(Func<Task<T>>);
+            var rewriter = MethodRewriter.CreateRewriter(entryPoint.Method, false);
+#if TRACE
+            Console.WriteLine("----------------------------- Rewriting ----------------------------- ");
+#endif
+            var methodInfo = (MethodInfo)(rewriter.Rewrite());
+
+#if TRACE
+            Console.WriteLine("----------------------------- Invoking ----------------------------- ");
+#endif
+            
+            // ReSharper disable once PossibleNullReferenceException
+            var task = methodInfo.CreateDelegate(delegateType) as Func<Task<T>>;
+            return await task.Invoke();
         }
     }
 }
