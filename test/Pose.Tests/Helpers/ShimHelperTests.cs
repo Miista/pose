@@ -12,6 +12,19 @@ namespace Pose.Tests
 {
     public class ShimHelperTests
     {
+        [Fact]
+        public void Throws_InvalidShimSignatureException_if_parameter_types_do_not_match()
+        {
+            // Arrange
+            var sut = Shim.Replace(() => Is.A<List<string>>().Add(Is.A<string>()));
+                
+            // Act
+            Action act = () => sut.With(delegate(List<string> instance, int value) { });
+                
+            // Assert
+            act.Should().Throw<InvalidShimSignatureException>(because: "the parameter type do not match");
+        }
+        
         [Theory]
         [MemberData(nameof(Throws_NotImplementedException_Data))]
         public void Throws_NotImplementedException<T>(Expression<Func<T>> expression, string reason)
